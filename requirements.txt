@@ -1,0 +1,6 @@
+python-telegram-bot>=21,<22
+notion-client>=2,<3
+pydantic>=2,<3
+pydantic-settings>=2,<3
+litellm>=1.50.0
+python-dateutil>=2.8
