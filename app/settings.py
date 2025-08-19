@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Literal
 
 from pydantic import Field, SecretStr, field_validator, model_validator
@@ -29,7 +27,11 @@ class Settings(BaseSettings):
     timezone: str = Field("Europe/Rome", alias="TIMEZONE")
     environment: Literal["local", "prod"] = Field("local", alias="ENVIRONMENT")
 
-    # --- Categorie (CSV nel .env)
+    # --- Liste configurabili da .env
+    accounts: list[str] = Field(
+        default_factory=lambda: ["Hype", "Revolut", "Contanti"],
+        alias="ACCOUNTS",
+    )
     outcome_categories: list[str] = Field(
         default_factory=lambda: [
             "Food",
@@ -58,18 +60,21 @@ class Settings(BaseSettings):
             raise ValueError(f"Invalid IANA timezone: {v}") from e
         return v
 
-    @field_validator("outcome_categories", "income_categories", mode="before")
+    @field_validator("accounts", "outcome_categories", "income_categories", mode="before")
     @classmethod
     def _parse_csv(cls, v: object) -> list[str]:
-        # Accetta già list[str] o CSV "a,b,c"; normalizza e dedup
+        # Accetta JSON list (consigliato in .env) o CSV o list[str]
         if v is None:
             return []
         if isinstance(v, str):
+            # Se è JSON valido, pydantic_settings lo passa già come list.
+            # Se arriva qui, assumiamo CSV.
             items = [s.strip() for s in v.split(",") if s.strip()]
         elif isinstance(v, list):
             items = [str(s).strip() for s in v if str(s).strip()]
         else:
-            raise ValueError("categories must be CSV string or list[str]")
+            raise ValueError("must be JSON array, CSV string or list[str]")
+        # dedup preservando ordine
         seen: set[str] = set()
         out: list[str] = []
         for it in items:
@@ -79,8 +84,7 @@ class Settings(BaseSettings):
         return out
 
     @model_validator(mode="after")
-    def _check_llm_api_key(self) -> Settings:
-        # Almeno una chiave tra OpenAI/Groq, o presente in os.environ
+    def _check_llm_api_key(self) -> "Settings":
         import os
 
         if not (
@@ -93,7 +97,7 @@ class Settings(BaseSettings):
         return self
 
     def export_llm_env(self) -> None:
-        """Opzionale: propaga le chiavi in os.environ per litellm."""
+        """Propaga le chiavi in os.environ per litellm (utile in dev/docker)."""
         import os
 
         if self.openai_api_key:

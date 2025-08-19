@@ -3,28 +3,15 @@ from __future__ import annotations
 
 import datetime as dt
 from decimal import ROUND_HALF_UP, Decimal
-from enum import Enum
 
 from pydantic import BaseModel, field_validator, model_validator
 
-from .settings import settings
+from .taxonomy import taxonomy  # runtime, settato al bootstrap
 
-
-class Account(str, Enum):
-    HYPE = "Hype"
-    REVOLUT = "Revolut"
-    CASH = "Contanti"
-
-
-ALLOWED_ACCOUNTS = {a.value for a in Account}
 ALLOWED_CURRENCIES = {"EUR"}
 
-# mapping per canonicalizzazione (case-insensitive)
-_OUT_CANON = {c.lower(): c for c in settings.outcome_categories}
-_INC_CANON = {c.lower(): c for c in settings.income_categories}
 
-
-def _canon_list(v: object, canon_map: dict[str, str]) -> list[str] | None:
+def _canon_list(v: object, allowed: list[str]) -> list[str] | None:
     if v is None or v == [] or v == "":
         return None
     if isinstance(v, str):
@@ -34,6 +21,7 @@ def _canon_list(v: object, canon_map: dict[str, str]) -> list[str] | None:
     else:
         raise ValueError("categories must be list[str] or comma-separated string")
 
+    canon_map = {c.lower(): c for c in allowed}
     out: list[str] = []
     seen: set[str] = set()
     for it in items:
@@ -54,7 +42,6 @@ class ExtractedTx(BaseModel):
     account: str
     date: dt.date
 
-    # multi-select Notion (validate vs allowed lists)
     outcome_categories: list[str] | None = None
     income_categories: list[str] | None = None
 
@@ -77,19 +64,19 @@ class ExtractedTx(BaseModel):
     @field_validator("account")
     @classmethod
     def account_ok(cls, v: str) -> str:
-        if v not in ALLOWED_ACCOUNTS:
+        if v not in set(taxonomy.accounts):
             raise ValueError(f"unsupported account: {v}")
         return v
 
     @field_validator("outcome_categories", mode="before")
     @classmethod
     def canon_outcome(cls, v: object) -> list[str] | None:
-        return _canon_list(v, _OUT_CANON)
+        return _canon_list(v, taxonomy.outcome_categories)
 
     @field_validator("income_categories", mode="before")
     @classmethod
     def canon_income(cls, v: object) -> list[str] | None:
-        return _canon_list(v, _INC_CANON)
+        return _canon_list(v, taxonomy.income_categories)
 
     @field_validator("date")
     @classmethod

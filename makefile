@@ -35,8 +35,20 @@ test:
 check: lint type test
 
 
-# Notion DB Schema Verification
-# This command checks if the Notion DB schema is up-to-date with the expected structure.
-# It should be run after any changes to the Notion DB schema or the app's data models.
+
+# Notion DB Schema + Taxonomy Verification
+# - Verifica tipi base del DB (title/number/date + relation)
+# - Legge le relation e controlla che non siano vuote
+# - Stampa quanti Account/Outcome/Income ha trovato
+.PHONY: schema-verify taxonomy-dump
+SHELL := /usr/bin/env bash
+
+# Notion DB Schema + Taxonomy Verification (script)
 schema-verify:
-	$(ACTIVATE) python -c "from app.notion_gateway import NotionGateway as G; G().verify_schema(); print('Notion DB schema OK ✅')"
+	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/schema_verify.py
+
+# Stampa le liste effettive lette da Notion (script)
+taxonomy-dump:
+	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/taxonomy_dump.py
+
+
