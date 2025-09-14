@@ -10,6 +10,7 @@ import litellm
 from litellm import acompletion
 from litellm.exceptions import UnsupportedParamsError
 
+from .normalizer import enforce_xor_categories
 from .settings import settings
 from .taxonomy import taxonomy
 
@@ -17,39 +18,35 @@ from .taxonomy import taxonomy
 def _build_schema() -> dict[str, Any]:
     # JSON Schema vincolato alla tassonomia runtime
     return {
-        "name": "transaction_schema",
-        "schema": {
-            "type": "object",
-            "additionalProperties": False,
-            "properties": {
-                "description": {"type": "string"},
-                "amount": {"type": "number"},
-                "currency": {"type": "string", "enum": ["EUR"]},
-                "account": {"type": "string", "enum": list(taxonomy.accounts)},
-                "date": {"type": "string", "format": "date"},
-                "outcome_categories": {
-                    "type": ["array", "null"],
-                    "items": {
-                        "type": "string",
-                        "enum": list(taxonomy.outcome_categories),
+        "type": "json_schema",
+        "json_schema": {
+            "name": "transaction_schema",
+            "schema": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "description": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "currency": {"type": "string", "enum": ["EUR"]},
+                    "account": {"type": "string", "enum": list(taxonomy.accounts)},
+                    "date": {"type": "string", "format": "date"},
+                    "outcome_categories": {
+                        "type": ["array", "null"],
+                        "items": {"type": "string", "enum": list(taxonomy.outcome_categories)},
                     },
-                },
-                "income_categories": {
-                    "type": ["array", "null"],
-                    "items": {
-                        "type": "string",
-                        "enum": list(taxonomy.income_categories),
+                    "income_categories": {
+                        "type": ["array", "null"],
+                        "items": {"type": "string", "enum": list(taxonomy.income_categories)},
                     },
+                    "notes": {"type": ["string", "null"]},
                 },
-                "notes": {"type": ["string", "null"]},
+                "required": ["description", "amount", "currency", "account", "date"],
             },
-            "required": ["description", "amount", "currency", "account", "date"],
         },
     }
 
 
 def _pick_example_outcome() -> str:
-    # Preferenze solo tra categorie che realmente esistono
     prefs = [
         "Eating Out and Takeway",
         "Supermarket",
@@ -64,7 +61,7 @@ def _pick_example_outcome() -> str:
 
 
 def _pick_example_income() -> str:
-    prefs = ["Salary", "Gifts", "Other Income", "Prelievo", "Risparmio", "Risparmio Car"]
+    prefs = ["Salary", "Gifts", "Other Income", "Prelievo", "Risparmio Car", "Risparmio"]
     for p in prefs:
         if p in taxonomy.income_categories:
             return p
@@ -72,10 +69,6 @@ def _pick_example_income() -> str:
 
 
 def _build_system_prompt() -> str:
-    """
-    Prompt forte: regole, liste vincolate e few-shot mirati per bar vs supermercato.
-    Nota: manteniamo i nomi esatti presenti in tassonomia (es. 'Eating Out and Takeway').
-    """
     lines = [
         "Sei un estrattore di transazioni. L'utente scrive frasi in italiano "
         "come 'ho comprato un caffè 1,20€ con Hype ieri'.",
@@ -92,11 +85,11 @@ def _build_system_prompt() -> str:
         "- Non lasciare campi vuoti se ricavabili dal testo. Se il testo menziona un account, usalo.",
         "",
         "Suggerimenti di mappatura (se il contesto non dice il contrario):",
-        "- 'caffè', 'caffe', 'cappuccino', 'espresso', 'cornetto', 'brioche', 'bar', 'colazione' → 'Eating Out and Takeway'",
-        "- 'ristorante', 'trattoria', 'pizzeria', 'aperitivo' → 'Eating Out and Takeway'",
+        "- 'caffè', 'caffe', 'cappuccino', 'espresso', 'cornetto', 'brioche', 'bar', 'colazione', "
+        "'pranzo', 'cena', 'pizzeria', 'ristorante', 'aperitivo' → 'Eating Out and Takeway'",
         "- 'supermercato', 'spesa' → 'Supermarket'",
-        "- 'stipendio' → 'Salary' (se presente nelle categorie Income)",
-        "- 'regalo', 'donazione' → 'Gifts' (se presente nelle categorie Income)",
+        "- 'stipendio' → 'Salary' (se presente tra Income)",
+        "- 'regalo', 'donazione' → 'Gifts' (Income) o 'Gifts & Donations' (Outcome) a seconda del testo.",
         "",
         "Esempi:",
         f"Input: 'ho preso un caffè al bar 1,20€ con Hype ieri'\n"
@@ -121,7 +114,6 @@ def _build_system_prompt() -> str:
         f'  "income_categories": null,\n'
         f'  "notes": null\n'
         f"}}",
-        "",
         "Rispondi SOLO con JSON valido.",
     ]
     return "\n".join(lines) + "\n"
@@ -154,55 +146,6 @@ async def _call_llm(messages: list[dict[str, str]], response_format: dict[str, A
         return await acompletion(**kwargs)
 
 
-def _heuristic_fill_account(text: str, account: str | None) -> str | None:
-    """Se l'LLM non ha messo l'account, prova a dedurlo dal testo (match case-insensitive)."""
-    if account and account.strip():
-        return account
-    t = text.lower()
-    for acc in taxonomy.accounts:
-        if acc.lower() in t:
-            return acc
-    return account
-
-
-def _infer_default_categories(
-    text: str, outcome: list[str] | None, income: list[str] | None
-) -> tuple[list[str] | None, list[str] | None]:
-    """
-    Se l'LLM non ha messo alcuna categoria, prova a dedurre una scelta ragionevole.
-    - Preferisci mappature che esistono DAVVERO nella tassonomia.
-    - Fallback a 'Other Outcome' se presente, altrimenti prima outcome disponibile.
-    """
-    if outcome or income:
-        return outcome, income
-
-    t = text.lower()
-
-    # Heuristics per entrate (solo se la categoria esiste davvero)
-    inc_prefs: list[tuple[str, str]] = [
-        ("stipendio", "Salary"),
-        ("salary", "Salary"),
-        ("regalo", "Gifts"),
-        ("donazione", "Gifts"),
-        ("gift", "Gifts"),
-        ("prelievo", "Prelievo"),
-        ("risparmio car", "Risparmio Car"),
-        ("risparmio", "Risparmio"),
-        ("other income", "Other Income"),
-    ]
-    for kw, cat in inc_prefs:
-        if kw in t and cat in taxonomy.income_categories:
-            return outcome, [cat]
-
-    # Default outcome ragionevole
-    if "Other Outcome" in taxonomy.outcome_categories:
-        return ["Other Outcome"], income
-    if taxonomy.outcome_categories:
-        return [taxonomy.outcome_categories[0]], income
-
-    return outcome, income
-
-
 async def extract_transaction(text: str) -> dict[str, Any]:
     tz = ZoneInfo(settings.timezone)
     now = datetime.now(tz).strftime("%Y-%m-%d")
@@ -212,10 +155,7 @@ async def extract_transaction(text: str) -> dict[str, Any]:
         {"role": "user", "content": f"Oggi è {now}. Testo: {text}"},
     ]
 
-    response_format: dict[str, Any] = {
-        "type": "json_schema",
-        "json_schema": _build_schema(),
-    }
+    response_format = _build_schema()
 
     try:
         resp: Any = await _call_llm(messages, response_format)
@@ -227,7 +167,7 @@ async def extract_transaction(text: str) -> dict[str, Any]:
                 messages[0],
                 {
                     "role": "user",
-                    "content": (messages[1]["content"] + "\nRispondi SOLO con JSON valido."),
+                    "content": messages[1]["content"] + "\nRispondi SOLO con JSON valido.",
                 },
             ],
             response_format,
@@ -248,15 +188,14 @@ async def extract_transaction(text: str) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise ValueError("LLM returned non-object JSON")
 
-    # ---- Post-processing robusto (rimane leggero: il grosso lo farà il normalizer + validator) ----
-    # 1) Account vuoto → prova a dedurre dal testo
-    acc = cast(str | None, data.get("account"))
-    data["account"] = _heuristic_fill_account(text, acc) or acc
-
-    # 2) Nessuna categoria → metti un default coerente
-    out_raw = cast(list[str] | None, data.get("outcome_categories"))
-    inc_raw = cast(list[str] | None, data.get("income_categories"))
-    out_fixed, inc_fixed = _infer_default_categories(text, out_raw, inc_raw)
+    # ---- Enforce XOR tra outcome/income (difesa centrale) ----
+    out_fixed, inc_fixed = enforce_xor_categories(
+        description=data.get("description", ""),
+        outcome=data.get("outcome_categories"),
+        income=data.get("income_categories"),
+        allowed_outcome=set(taxonomy.outcome_categories),
+        allowed_income=set(taxonomy.income_categories),
+    )
     data["outcome_categories"] = out_fixed
     data["income_categories"] = inc_fixed
 

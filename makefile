@@ -55,4 +55,6 @@ taxonomy-dump:
 smoke-llm:
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm.py
 
+smoke-llm-batch:
+	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm_batch.py
 
