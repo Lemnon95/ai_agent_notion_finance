@@ -1,0 +1,17 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Format (ruff+black)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "ruff check . --fix && black ."]
+    },
+    {
+      "label": "Check (ruff/black/mypy/pytest)",
+      "type": "shell",
+      "command": "bash",
+      "args": ["-lc", "make check"]
+    }
+  ]
+}

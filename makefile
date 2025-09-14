@@ -22,16 +22,16 @@ clean:
 # Linting and Testing
 
 format:
-	ruff check . --fix
-	black .
+	$(ACTIVATE) $(PYTHON) -m ruff check . --fix
+	$(ACTIVATE) $(PYTHON) -m black .
 
 lint:
-	ruff check .
-	black --check .
+	$(ACTIVATE) $(PYTHON) -m ruff check .
+	$(ACTIVATE) $(PYTHON) -m black --check .
 type:
-	mypy .
+	$(ACTIVATE) $(PYTHON) -m mypy .
 test:
-	pytest -q
+	$(ACTIVATE) $(PYTHON) -m pytest -q
 check: lint type test
 
 
@@ -50,5 +50,9 @@ schema-verify:
 # Stampa le liste effettive lette da Notion (script)
 taxonomy-dump:
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/taxonomy_dump.py
+
+# Scrive una pagina di test su Notion (usa il primo account/categoria disponibili)
+smoke-llm:
+	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm.py
 
 
