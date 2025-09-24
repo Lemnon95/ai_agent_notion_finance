@@ -1,15 +1,15 @@
+# app/telegram_bot.py
 from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, cast
+from typing import Any
 
 from telegram import Update
 from telegram.ext import (
     Application,
     CommandHandler,
     ContextTypes,
-    JobQueue,
     MessageHandler,
     filters,
 )
@@ -32,8 +32,9 @@ HELP_TEXT = (
 )
 
 
-async def _bootstrap_taxonomy() -> None:
-    # Carica tassonomia da Notion una volta all'avvio
+# --- BOOTSTRAP SINCRONO (niente task/await) ---
+def bootstrap_taxonomy() -> None:
+    """Carica tassonomia da Notion all'avvio (sincrono)."""
     gateway.verify_schema()
     set_taxonomy(gateway.read_taxonomy())
     log.info(
@@ -44,6 +45,7 @@ async def _bootstrap_taxonomy() -> None:
     )
 
 
+# --- HANDLERS ---
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     msg = update.effective_message
     if not msg:
@@ -65,6 +67,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         raw["account"] = normalize_account(
             (raw.get("account") or ""), set(taxonomy.accounts)
         ) or raw.get("account")
+
         raw["outcome_categories"] = normalize_outcome(
             raw.get("outcome_categories"),
             raw.get("description", ""),
@@ -108,45 +111,28 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     except Exception as e:
         log.exception("Errore durante l'elaborazione del messaggio: %s", e)
-        # Messaggi d'errore più amichevoli su casi comuni
         emsg = str(e)
         if "unsupported account" in emsg:
-            user_msg = "⚠️ Account non valido. Prova a specificare la carta/contanti (es. Hype, Revolut, Contanti)."
+            user_msg = "⚠️ Account non valido. Prova a specificare Hype, Revolut o Contanti."
         elif "unknown category" in emsg or "provide at least one" in emsg:
-            user_msg = "⚠️ Categoria non riconosciuta. Specifica meglio cosa hai acquistato (es. 'al bar', 'supermercato')."
+            user_msg = (
+                "⚠️ Categoria non riconosciuta. Aggiungi dettagli (es. 'al bar', 'supermercato')."
+            )
         elif "amount must be > 0" in emsg:
             user_msg = "⚠️ L'importo deve essere maggiore di 0."
         elif "date too far" in emsg:
-            user_msg = "⚠️ La data sembra troppo lontana. Usa oggi/ieri o una data recente."
+            user_msg = "⚠️ La data sembra troppo lontana: usa oggi/ieri o una data recente."
         else:
-            user_msg = (
-                "❌ Non sono riuscito a registrare la spesa.\n"
-                "Controlla account/importo/data e riprova riformulando la frase."
-            )
+            user_msg = "❌ Non sono riuscito a registrare. Riprova riformulando."
         await msg.reply_text(user_msg)
 
 
-# Alias di tipo con i 6 parametri generici (Python 3.12: keyword `type`)
-type AppT = Application[
-    Any,
-    Any,
-    dict[str, Any],
-    dict[str, Any],
-    dict[str, Any],
-    dict[str, Any],
-    JobQueue[Any] | None,
-]
+# --- COSTRUZIONE APP (sincrona, mypy-friendly) ---
+def build_application() -> Application:
+    # Carichiamo tassonomia PRIMA di costruire l'app (sincrono)
+    bootstrap_taxonomy()
 
-
-def build_application() -> AppT:
-    token = settings.telegram_bot_token.get_secret_value()
-    app = Application.builder().token(token).build()
-    app_typed: AppT = cast(AppT, app)
-
-    # Bootstrap tassonomia (blocking all'avvio, poi si parte)
-    # Se preferisci, potresti farlo in background e rifiutare messaggi finché non è pronta.
-    app_typed.create_task(_bootstrap_taxonomy())
-
-    app_typed.add_handler(CommandHandler("start", cmd_start))
-    app_typed.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    return app_typed
+    app = Application.builder().token(settings.telegram_bot_token.get_secret_value()).build()
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    return app

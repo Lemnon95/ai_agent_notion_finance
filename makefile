@@ -58,3 +58,25 @@ smoke-llm:
 smoke-llm-batch:
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm_batch.py
 
+# --- Bot Telegram (polling) ---
+SHELL := /bin/bash
+PY := PYTHONPATH=. python3
+BOT_SCRIPT := scripts/run_bot.py
+
+.PHONY: bot-env
+bot-env:
+	@if [ ! -f .env ]; then echo "Error: .env non trovato"; exit 1; fi
+	set -a; . ./.env; set +a; \
+	if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi; \
+	$(PY) $(BOT_SCRIPT)
+
+.PHONY: bot
+bot:
+	@if [ -f .env ]; then set -a; . ./.env; set +a; fi; \
+	if [ -z "$$TELEGRAM_BOT_TOKEN" ]; then \
+		echo "Error: TELEGRAM_BOT_TOKEN non impostato."; \
+		exit 1; \
+	fi; \
+	if [ -f .venv/bin/activate ]; then . .venv/bin/activate; fi; \
+	$(PY) $(BOT_SCRIPT)
+
