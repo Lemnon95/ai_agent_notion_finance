@@ -31,7 +31,10 @@ def _build_schema() -> dict[str, Any]:
                     "description": {"type": "string"},
                     "amount": {"type": "number"},
                     "currency": {"type": "string", "enum": ["EUR"]},
-                    "account": {"type": "string", "enum": list(taxonomy.accounts)},
+                    "account": {
+                        "type": "string",
+                        "enum": list(taxonomy.accounts),
+                    },
                     "date": {"type": "string", "format": "date"},
                     "outcome_categories": {
                         "type": ["array", "null"],
@@ -53,7 +56,13 @@ def _build_schema() -> dict[str, Any]:
                     },
                     "notes": {"type": ["string", "null"]},
                 },
-                "required": ["description", "amount", "currency", "account", "date"],
+                "required": [
+                    "description",
+                    "amount",
+                    "currency",
+                    "account",
+                    "date",
+                ],
             },
         },
     }
@@ -61,123 +70,181 @@ def _build_schema() -> dict[str, Any]:
 
 def _build_system_prompt() -> str:
     """
-    Outcome: preferisci DUE categorie in quest'ordine -> [MACRO, SPECIFICA]
-    MACRO ∈ {'Wants','Needs','Savings'}; SPECIFICA è una categoria Outcome dettagliata.
-    Se non esiste una SPECIFICA sensata (es. risparmio generico), puoi usare solo la MACRO.
+    Outcome: preferisci DUE categorie -> [MACRO, SPECIFICA].
+    MACRO ∈ {'Wants','Needs','Savings'}; SPECIFICA è una categoria Outcome.
+    Se non esiste una SPECIFICA sensata (es. risparmio generico),
+    puoi usare solo la MACRO.
     """
     accounts = list(taxonomy.accounts)
     outcome = list(taxonomy.outcome_categories)
     income = list(taxonomy.income_categories)
 
     lines = [
-        "Sei un estrattore di transazioni in italiano. Devi restituire SOLO JSON conforme allo schema fornito.",
+        (
+            "Sei un estrattore di transazioni in italiano. "
+            "Devi restituire SOLO JSON conforme allo schema fornito."
+        ),
         "",
         "REGOLE:",
         "- 'amount' è un numero con punto decimale (es. 1.2).",
-        f"- 'date' in formato YYYY-MM-DD usando il fuso {settings.timezone} (interpreta 'oggi', 'ieri').",
+        (
+            f"- 'date' in formato YYYY-MM-DD usando il fuso {settings.timezone} "
+            "(interpreta 'oggi', 'ieri')."
+        ),
         f"- 'account' deve essere uno fra: {accounts}.",
         "- Se è una SPESA: scegli SOLO tra queste categorie Outcome:",
         f"  {outcome}.",
         "- Se è un'ENTRATA: scegli SOLO tra queste categorie Income:",
         f"  {income}.",
-        "- NON impostare contemporaneamente outcome_categories e income_categories (regola XOR).",
-        "- Non usare sinonimi o valori non presenti nelle liste. Non scrivere testo extra fuori dal JSON.",
+        (
+            "- NON impostare contemporaneamente outcome_categories e "
+            "income_categories (regola XOR)."
+        ),
+        (
+            "- Non usare sinonimi o valori non presenti nelle liste. "
+            "Non scrivere testo extra fuori dal JSON."
+        ),
         "- Quando un campo non si applica, usa null (non liste vuote).",
         "",
         "CONVENZIONE PER LE SPESE (Outcome):",
         "- Preferisci due categorie nell'ordine: [MACRO, SPECIFICA].",
         "- La MACRO è una di: 'Wants', 'Needs', 'Savings'.",
-        "- La SPECIFICA è una categoria dettagliata (es. 'Fun', 'Supermarket', 'Bollette', 'Salute', 'Travel', 'Ballo', 'Palestra', 'Gifts & Donations', ...).",
-        "- Se non c'è una SPECIFICA sensata (es. risparmio generico), puoi usare solo la MACRO (['Savings']).",
+        (
+            "- La SPECIFICA è una categoria dettagliata (es. 'Fun', 'Supermarket', "
+            "'Bollette', 'Salute', 'Travel', 'Ballo', 'Palestra', "
+            "'Gifts & Donations', ...)."
+        ),
+        (
+            "- Se non c'è una SPECIFICA sensata (es. risparmio generico), "
+            "puoi usare solo la MACRO (['Savings'])."
+        ),
         "",
         "SCELTA DELLA MACRO (default, salvo contesto contrario):",
-        "- 'Eating Out and Takeway', 'Fun', 'Subscriptions', 'Travel', 'Ballo', 'Palestra', 'Vestiario' → MACRO = 'Wants'",
-        "- 'Supermarket', 'Bollette', 'Casa', 'Salute', 'Integratori', 'Benzina', 'Car' → MACRO = 'Needs'",
-        "- Casi di risparmio/spostamenti verso obiettivi: 'Savings', 'Risparmio', 'Risparmio Car', 'Salvadanaio Winnies' → MACRO = 'Savings'",
+        (
+            "- 'Eating Out and Takeway', 'Fun', 'Subscriptions', 'Travel', 'Ballo', "
+            "'Palestra', 'Vestiario' → MACRO = 'Wants'"
+        ),
+        (
+            "- 'Supermarket', 'Bollette', 'Casa', 'Salute', 'Integratori', "
+            "'Benzina', 'Car' → MACRO = 'Needs'"
+        ),
+        (
+            "- Casi di risparmio/spostamenti verso obiettivi: 'Savings', "
+            "'Risparmio', 'Risparmio Car', 'Salvadanaio Winnies' → "
+            "MACRO = 'Savings'"
+        ),
         "",
         "ALCUNE MAPPATURE DI CONTENUTO (SPECIFICA):",
-        "- BAR/PASTI: 'caffè', 'cappuccino', 'bar', 'pranzo', 'cena', 'pizzeria', 'ristorante', 'aperitivo' → 'Eating Out and Takeway'",
+        (
+            "- BAR/PASTI: 'caffè', 'cappuccino', 'bar', 'pranzo', 'cena', "
+            "'pizzeria', 'ristorante', 'aperitivo' → 'Eating Out and Takeway'"
+        ),
         "- SUPERMERCATO: 'supermercato', 'spesa' → 'Supermarket'",
-        "- GAMING: 'videogioco', 'videogame', 'gioco', 'gaming', 'steam', 'epic games', 'gog', 'uplay', 'origin', 'playstation store', 'ps store', 'nintendo eshop', 'xbox', 'game pass' → 'Fun'",
-        "- ABBONAMENTI DIGITALI: 'spotify', 'netflix', 'abbonamento' (servizi ricorrenti) → 'Subscriptions'",
+        (
+            "- GAMING: 'videogioco', 'videogame', 'gioco', 'gaming', 'steam', "
+            "'epic games', 'gog', 'uplay', 'origin', 'playstation store', "
+            "'ps store', 'nintendo eshop', 'xbox', 'game pass' → 'Fun'"
+        ),
+        (
+            "- ABBONAMENTI DIGITALI: 'spotify', 'netflix', 'abbonamento' "
+            "(servizi ricorrenti) → 'Subscriptions'"
+        ),
         "- VIAGGI/TRASPORTO: 'taxi', 'treno', 'biglietto', 'aereo' → 'Travel'",
-        "- DONAZIONI (denaro dato/beneficenza): 'donazione', 'donare' → 'Gifts & Donations'",
+        ("- DONAZIONI (denaro dato/beneficenza): 'donazione', 'donare' → " "'Gifts & Donations'"),
         "",
         "ENTRATE (Income):",
-        "- Non usare la convenzione macro+specifica. Metti solo una categoria Income.",
+        "- Non usare la convenzione macro+specifica. Metti solo una categoria.",
         "- 'regalo' come ENTRATA (denaro ricevuto) → 'Gifts' (Income).",
         "- 'stipendio' → 'Salary' (Income).",
-        "- Se non si adatta ad alcuna Income e 'Other Income' è disponibile, usa 'Other Income'.",
+        (
+            "- Se non si adatta ad alcuna Income e 'Other Income' è disponibile, "
+            "usa 'Other Income'."
+        ),
         "",
         "ESEMPI (usa i nomi esatti delle liste):",
         "Input: 'ho comprato un videogioco su Steam con Hype 3,99€ ieri'",
-        "Output: {"
-        '  "description": "ho comprato un videogioco su Steam con Hype 3,99€ ieri",'
-        '  "amount": 3.99,'
-        '  "currency": "EUR",'
-        '  "account": "Hype",'
-        f'  "date": "<ieri in {settings.timezone} in ISO>",'
-        '  "outcome_categories": ["Wants", "Fun"],'
-        '  "income_categories": null,'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "ho comprato un videogioco su Steam con Hype 3,99€ ieri",'
+            '  "amount": 3.99,'
+            '  "currency": "EUR",'
+            '  "account": "Hype",'
+            f'  "date": "<ieri in {settings.timezone} in ISO>",'
+            '  "outcome_categories": ["Wants", "Fun"],'
+            '  "income_categories": null,'
+            '  "notes": null'
+            "}"
+        ),
         "Input: 'spesa supermercato 27,90€ con Hype oggi'",
-        "Output: {"
-        '  "description": "spesa supermercato 27,90€ con Hype oggi",'
-        '  "amount": 27.90,'
-        '  "currency": "EUR",'
-        '  "account": "Hype",'
-        '  "date": "<oggi in ISO>",'
-        '  "outcome_categories": ["Needs", "Supermarket"],'
-        '  "income_categories": null,'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "spesa supermercato 27,90€ con Hype oggi",'
+            '  "amount": 27.90,'
+            '  "currency": "EUR",'
+            '  "account": "Hype",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": ["Needs", "Supermarket"],'
+            '  "income_categories": null,'
+            '  "notes": null'
+            "}"
+        ),
         "Input: 'bolletta luce 63,25€ poste italiane'",
-        "Output: {"
-        '  "description": "bolletta luce 63,25€ poste italiane",'
-        '  "amount": 63.25,'
-        '  "currency": "EUR",'
-        '  "account": "Poste Italiane",'
-        '  "date": "<oggi in ISO>",'
-        '  "outcome_categories": ["Needs", "Bollette"],'
-        '  "income_categories": null,'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "bolletta luce 63,25€ poste italiane",'
+            '  "amount": 63.25,'
+            '  "currency": "EUR",'
+            '  "account": "Poste Italiane",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": ["Needs", "Bollette"],'
+            '  "income_categories": null,'
+            '  "notes": null'
+            "}"
+        ),
         "Input: 'spostato 200€ su Risparmio Car'",
-        "Output: {"
-        '  "description": "spostato 200€ su Risparmio Car",'
-        '  "amount": 200.0,'
-        '  "currency": "EUR",'
-        '  "account": "<se indicato nel testo, altrimenti deducibile>",'
-        '  "date": "<oggi in ISO>",'
-        '  "outcome_categories": ["Savings", "Risparmio Car"],'
-        '  "income_categories": null,'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "spostato 200€ su Risparmio Car",'
+            '  "amount": 200.0,'
+            '  "currency": "EUR",'
+            '  "account": "<se indicato nel testo, altrimenti deducibile>",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": ["Savings", "Risparmio Car"],'
+            '  "income_categories": null,'
+            '  "notes": null'
+            "}"
+        ),
         "Input: 'ho fatto una donazione 15€ con Revolut'",
-        "Output: {"
-        '  "description": "ho fatto una donazione 15€ con Revolut",'
-        '  "amount": 15.0,'
-        '  "currency": "EUR",'
-        '  "account": "Revolut",'
-        '  "date": "<oggi in ISO>",'
-        '  "outcome_categories": ["Wants", "Gifts & Donations"],'
-        '  "income_categories": null,'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "ho fatto una donazione 15€ con Revolut",'
+            '  "amount": 15.0,'
+            '  "currency": "EUR",'
+            '  "account": "Revolut",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": ["Wants", "Gifts & Donations"],'
+            '  "income_categories": null,'
+            '  "notes": null'
+            "}"
+        ),
         "Input: 'ho ricevuto un regalo 50€ contanti'",
-        "Output: {"
-        '  "description": "ho ricevuto un regalo 50€ contanti",'
-        '  "amount": 50.0,'
-        '  "currency": "EUR",'
-        '  "account": "Contanti",'
-        '  "date": "<oggi in ISO>",'
-        '  "outcome_categories": null,'
-        '  "income_categories": ["Gifts"],'
-        '  "notes": null'
-        "}",
+        (
+            "Output: {"
+            '  "description": "ho ricevuto un regalo 50€ contanti",'
+            '  "amount": 50.0,'
+            '  "currency": "EUR",'
+            '  "account": "Contanti",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": null,'
+            '  "income_categories": ["Gifts"],'
+            '  "notes": null'
+            "}"
+        ),
         "",
-        "Se nessuna categoria SPECIFICA è adatta ma è chiaramente una SPESA, usa ['Wants'] o ['Needs'] o ['Savings'] da sola, secondo buon senso.",
+        (
+            "Se nessuna categoria SPECIFICA è adatta ma è chiaramente una SPESA, "
+            "usa ['Wants'] o ['Needs'] o ['Savings'] da sola, secondo buon senso."
+        ),
         "Rispondi SOLO con JSON valido.",
     ]
     return "\n".join(lines) + "\n"
@@ -187,7 +254,10 @@ def _is_gpt5() -> bool:
     return settings.llm_model.lower().startswith("gpt-5")
 
 
-async def _call_llm(messages: list[dict[str, str]], response_format: dict[str, Any]) -> Any:
+async def _call_llm(
+    messages: list[dict[str, str]],
+    response_format: dict[str, Any],
+) -> Any:
     """Chiama l'LLM gestendo differenze tra GPT-5 e altri modelli."""
     kwargs: dict[str, Any] = {
         "model": settings.llm_model,
@@ -231,7 +301,7 @@ async def extract_transaction(text: str) -> dict[str, Any]:
                 messages[0],
                 {
                     "role": "user",
-                    "content": messages[1]["content"] + "\nRispondi SOLO con JSON valido.",
+                    "content": (messages[1]["content"] + "\nRispondi SOLO con JSON valido."),
                 },
             ],
             response_format,
@@ -239,6 +309,7 @@ async def extract_transaction(text: str) -> dict[str, Any]:
         content = resp.choices[0].message.content
 
     content = content.strip()
+
     # Rimuovi eventuali fence ```json
     if content.startswith("```"):
         parts = content.split("```")
