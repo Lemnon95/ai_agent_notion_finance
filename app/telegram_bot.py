@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from telegram import Update
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -20,6 +21,7 @@ from .normalizer import enforce_xor_categories, normalize_account, normalize_out
 from .notion_gateway import NotionGateway
 from .settings import settings
 from .taxonomy import set_taxonomy, taxonomy
+from .ux import TxnView
 
 log = logging.getLogger(__name__)
 gateway = NotionGateway()
@@ -94,20 +96,28 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         # 6) Salvataggio Notion (sync) in thread separato
         url = await asyncio.to_thread(gateway.save_transaction, notion_tx)
 
-        # 7) Risposta utente
-        amount_eur = f"{notion_tx.amount:.2f}".replace(".", ",")
-        cats = notion_tx.outcome_categories or notion_tx.income_categories or []
-        cats_s = ", ".join(cats) if cats else "—"
-        reply = (
-            "✅ Spesa/Movimento registrato\n"
-            f"• Descrizione: {notion_tx.description}\n"
-            f"• Importo: {amount_eur} €\n"
-            f"• Data: {notion_tx.date.isoformat()}\n"
-            f"• Account: {notion_tx.account}\n"
-            f"• Categoria/e: {cats_s}\n\n"
-            f'🔗 <a href="{url}">Apri in Notion</a>'
+        # 7) Risposta utente (UX con emoji)
+        category = None
+        if notion_tx.outcome_categories:
+            category = notion_tx.outcome_categories[0]
+        elif notion_tx.income_categories:
+            category = notion_tx.income_categories[0]
+
+        view = TxnView(
+            description=notion_tx.description,
+            amount=notion_tx.amount,
+            account=notion_tx.account,
+            currency="EUR",
+            date=notion_tx.date,
+            notion_url=url,
+            category=category,
         )
-        await msg.reply_html(reply, disable_web_page_preview=True)
+
+        await msg.reply_text(
+            view.confirmation_message(),
+            parse_mode=ParseMode.MARKDOWN,
+            disable_web_page_preview=True,
+        )
 
     except Exception as e:
         log.exception("Errore durante l'elaborazione del messaggio: %s", e)
