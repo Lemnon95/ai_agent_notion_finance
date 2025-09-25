@@ -16,7 +16,10 @@ from .taxonomy import taxonomy
 
 
 def _build_schema() -> dict[str, Any]:
-    # JSON Schema vincolato alla tassonomia runtime
+    """
+    JSON Schema vincolato alla tassonomia runtime.
+    Nota: outcome_categories permette 1–2 voci (es. ['Wants','Fun']).
+    """
     return {
         "type": "json_schema",
         "json_schema": {
@@ -32,11 +35,21 @@ def _build_schema() -> dict[str, Any]:
                     "date": {"type": "string", "format": "date"},
                     "outcome_categories": {
                         "type": ["array", "null"],
-                        "items": {"type": "string", "enum": list(taxonomy.outcome_categories)},
+                        "minItems": 1,
+                        "maxItems": 2,
+                        "items": {
+                            "type": "string",
+                            "enum": list(taxonomy.outcome_categories),
+                        },
                     },
                     "income_categories": {
                         "type": ["array", "null"],
-                        "items": {"type": "string", "enum": list(taxonomy.income_categories)},
+                        "minItems": 1,
+                        "maxItems": 1,
+                        "items": {
+                            "type": "string",
+                            "enum": list(taxonomy.income_categories),
+                        },
                     },
                     "notes": {"type": ["string", "null"]},
                 },
@@ -46,74 +59,125 @@ def _build_schema() -> dict[str, Any]:
     }
 
 
-def _pick_example_outcome() -> str:
-    prefs = [
-        "Eating Out and Takeway",
-        "Supermarket",
-        "Needs",
-        "Fun",
-        "Other Outcome",
-    ]
-    for p in prefs:
-        if p in taxonomy.outcome_categories:
-            return p
-    return taxonomy.outcome_categories[0] if taxonomy.outcome_categories else "Other Outcome"
-
-
-def _pick_example_income() -> str:
-    prefs = ["Salary", "Gifts", "Other Income", "Prelievo", "Risparmio Car", "Risparmio"]
-    for p in prefs:
-        if p in taxonomy.income_categories:
-            return p
-    return taxonomy.income_categories[0] if taxonomy.income_categories else "Salary"
-
-
 def _build_system_prompt() -> str:
+    """
+    Outcome: preferisci DUE categorie in quest'ordine -> [MACRO, SPECIFICA]
+    MACRO ∈ {'Wants','Needs','Savings'}; SPECIFICA è una categoria Outcome dettagliata.
+    Se non esiste una SPECIFICA sensata (es. risparmio generico), puoi usare solo la MACRO.
+    """
+    accounts = list(taxonomy.accounts)
+    outcome = list(taxonomy.outcome_categories)
+    income = list(taxonomy.income_categories)
+
     lines = [
-        "Sei un estrattore di transazioni. L'utente scrive frasi in italiano "
-        "come 'ho comprato un caffè 1,20€ con Hype ieri'.",
-        "Devi restituire SOLO JSON conforme allo schema fornito (nessun testo extra).",
-        "Regole:",
+        "Sei un estrattore di transazioni in italiano. Devi restituire SOLO JSON conforme allo schema fornito.",
+        "",
+        "REGOLE:",
         "- 'amount' è un numero con punto decimale (es. 1.2).",
         f"- 'date' in formato YYYY-MM-DD usando il fuso {settings.timezone} (interpreta 'oggi', 'ieri').",
-        f"- 'account' deve essere uno di: {list(taxonomy.accounts)}.",
-        "- Se è una spesa: scegli SOLO tra queste categorie Outcome:",
-        f"  {list(taxonomy.outcome_categories)}.",
-        "- Se è un'entrata: scegli SOLO tra queste categorie Income:",
-        f"  {list(taxonomy.income_categories)}.",
-        "- Se nessuna categoria è adatta, usa 'Other Outcome'.",
-        "- Non lasciare campi vuoti se ricavabili dal testo. Se il testo menziona un account, usalo.",
+        f"- 'account' deve essere uno fra: {accounts}.",
+        "- Se è una SPESA: scegli SOLO tra queste categorie Outcome:",
+        f"  {outcome}.",
+        "- Se è un'ENTRATA: scegli SOLO tra queste categorie Income:",
+        f"  {income}.",
+        "- NON impostare contemporaneamente outcome_categories e income_categories (regola XOR).",
+        "- Non usare sinonimi o valori non presenti nelle liste. Non scrivere testo extra fuori dal JSON.",
+        "- Quando un campo non si applica, usa null (non liste vuote).",
         "",
-        "Suggerimenti di mappatura (se il contesto non dice il contrario):",
-        "- 'caffè', 'caffe', 'cappuccino', 'espresso', 'cornetto', 'brioche', 'bar', 'colazione', "
-        "'pranzo', 'cena', 'pizzeria', 'ristorante', 'aperitivo' → 'Eating Out and Takeway'",
-        "- 'supermercato', 'spesa' → 'Supermarket'",
-        "- 'stipendio' → 'Salary' (se presente tra Income)",
-        "- 'regalo', 'donazione' → 'Gifts' (Income) o 'Gifts & Donations' (Outcome) a seconda del testo.",
+        "CONVENZIONE PER LE SPESE (Outcome):",
+        "- Preferisci due categorie nell'ordine: [MACRO, SPECIFICA].",
+        "- La MACRO è una di: 'Wants', 'Needs', 'Savings'.",
+        "- La SPECIFICA è una categoria dettagliata (es. 'Fun', 'Supermarket', 'Bollette', 'Salute', 'Travel', 'Ballo', 'Palestra', 'Gifts & Donations', ...).",
+        "- Se non c'è una SPECIFICA sensata (es. risparmio generico), puoi usare solo la MACRO (['Savings']).",
         "",
-        "Esempi:",
-        f"Input: 'ho preso un caffè al bar 1,20€ con Hype ieri'\n"
-        f"Output: {{\n"
-        f'  "description": "ho preso un caffè al bar 1,20€ con Hype ieri",\n'
-        f'  "amount": 1.2,\n'
-        f'  "currency": "EUR",\n'
-        f'  "account": "Hype",\n'
-        f'  "date": "<ieri in {settings.timezone} in ISO>",\n'
-        f'  "outcome_categories": ["Eating Out and Takeway"],\n'
-        f'  "income_categories": null,\n'
-        f'  "notes": null\n'
-        f"}}",
-        f"Input: 'comprato caffè in grani al supermercato 12€ con Contanti oggi'\n"
-        f"Output: {{\n"
-        f'  "description": "comprato caffè in grani al supermercato 12€ con Contanti oggi",\n'
-        f'  "amount": 12.0,\n'
-        f'  "currency": "EUR",\n'
-        f'  "account": "Contanti",\n'
-        f'  "date": "<oggi in {settings.timezone} in ISO>",\n'
-        f'  "outcome_categories": ["Supermarket"],\n'
-        f'  "income_categories": null,\n'
-        f'  "notes": null\n'
-        f"}}",
+        "SCELTA DELLA MACRO (default, salvo contesto contrario):",
+        "- 'Eating Out and Takeway', 'Fun', 'Subscriptions', 'Travel', 'Ballo', 'Palestra', 'Vestiario' → MACRO = 'Wants'",
+        "- 'Supermarket', 'Bollette', 'Casa', 'Salute', 'Integratori', 'Benzina', 'Car' → MACRO = 'Needs'",
+        "- Casi di risparmio/spostamenti verso obiettivi: 'Savings', 'Risparmio', 'Risparmio Car', 'Salvadanaio Winnies' → MACRO = 'Savings'",
+        "",
+        "ALCUNE MAPPATURE DI CONTENUTO (SPECIFICA):",
+        "- BAR/PASTI: 'caffè', 'cappuccino', 'bar', 'pranzo', 'cena', 'pizzeria', 'ristorante', 'aperitivo' → 'Eating Out and Takeway'",
+        "- SUPERMERCATO: 'supermercato', 'spesa' → 'Supermarket'",
+        "- GAMING: 'videogioco', 'videogame', 'gioco', 'gaming', 'steam', 'epic games', 'gog', 'uplay', 'origin', 'playstation store', 'ps store', 'nintendo eshop', 'xbox', 'game pass' → 'Fun'",
+        "- ABBONAMENTI DIGITALI: 'spotify', 'netflix', 'abbonamento' (servizi ricorrenti) → 'Subscriptions'",
+        "- VIAGGI/TRASPORTO: 'taxi', 'treno', 'biglietto', 'aereo' → 'Travel'",
+        "- DONAZIONI (denaro dato/beneficenza): 'donazione', 'donare' → 'Gifts & Donations'",
+        "",
+        "ENTRATE (Income):",
+        "- Non usare la convenzione macro+specifica. Metti solo una categoria Income.",
+        "- 'regalo' come ENTRATA (denaro ricevuto) → 'Gifts' (Income).",
+        "- 'stipendio' → 'Salary' (Income).",
+        "- Se non si adatta ad alcuna Income e 'Other Income' è disponibile, usa 'Other Income'.",
+        "",
+        "ESEMPI (usa i nomi esatti delle liste):",
+        "Input: 'ho comprato un videogioco su Steam con Hype 3,99€ ieri'",
+        "Output: {"
+        '  "description": "ho comprato un videogioco su Steam con Hype 3,99€ ieri",'
+        '  "amount": 3.99,'
+        '  "currency": "EUR",'
+        '  "account": "Hype",'
+        f'  "date": "<ieri in {settings.timezone} in ISO>",'
+        '  "outcome_categories": ["Wants", "Fun"],'
+        '  "income_categories": null,'
+        '  "notes": null'
+        "}",
+        "Input: 'spesa supermercato 27,90€ con Hype oggi'",
+        "Output: {"
+        '  "description": "spesa supermercato 27,90€ con Hype oggi",'
+        '  "amount": 27.90,'
+        '  "currency": "EUR",'
+        '  "account": "Hype",'
+        '  "date": "<oggi in ISO>",'
+        '  "outcome_categories": ["Needs", "Supermarket"],'
+        '  "income_categories": null,'
+        '  "notes": null'
+        "}",
+        "Input: 'bolletta luce 63,25€ poste italiane'",
+        "Output: {"
+        '  "description": "bolletta luce 63,25€ poste italiane",'
+        '  "amount": 63.25,'
+        '  "currency": "EUR",'
+        '  "account": "Poste Italiane",'
+        '  "date": "<oggi in ISO>",'
+        '  "outcome_categories": ["Needs", "Bollette"],'
+        '  "income_categories": null,'
+        '  "notes": null'
+        "}",
+        "Input: 'spostato 200€ su Risparmio Car'",
+        "Output: {"
+        '  "description": "spostato 200€ su Risparmio Car",'
+        '  "amount": 200.0,'
+        '  "currency": "EUR",'
+        '  "account": "<se indicato nel testo, altrimenti deducibile>",'
+        '  "date": "<oggi in ISO>",'
+        '  "outcome_categories": ["Savings", "Risparmio Car"],'
+        '  "income_categories": null,'
+        '  "notes": null'
+        "}",
+        "Input: 'ho fatto una donazione 15€ con Revolut'",
+        "Output: {"
+        '  "description": "ho fatto una donazione 15€ con Revolut",'
+        '  "amount": 15.0,'
+        '  "currency": "EUR",'
+        '  "account": "Revolut",'
+        '  "date": "<oggi in ISO>",'
+        '  "outcome_categories": ["Wants", "Gifts & Donations"],'
+        '  "income_categories": null,'
+        '  "notes": null'
+        "}",
+        "Input: 'ho ricevuto un regalo 50€ contanti'",
+        "Output: {"
+        '  "description": "ho ricevuto un regalo 50€ contanti",'
+        '  "amount": 50.0,'
+        '  "currency": "EUR",'
+        '  "account": "Contanti",'
+        '  "date": "<oggi in ISO>",'
+        '  "outcome_categories": null,'
+        '  "income_categories": ["Gifts"],'
+        '  "notes": null'
+        "}",
+        "",
+        "Se nessuna categoria SPECIFICA è adatta ma è chiaramente una SPESA, usa ['Wants'] o ['Needs'] o ['Savings'] da sola, secondo buon senso.",
         "Rispondi SOLO con JSON valido.",
     ]
     return "\n".join(lines) + "\n"
