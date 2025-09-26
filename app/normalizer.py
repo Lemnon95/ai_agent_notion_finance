@@ -183,7 +183,8 @@ def enforce_xor_categories(
     Impone XOR tra outcome e income PRIMA del Pydantic.
     Regole:
       - Se solo uno è valorizzato -> ok.
-      - Se entrambi -> decide usando gli hint del testo (income batte outcome; se testo è ambiguo: preferisci income).
+      - Se entrambi -> decide usando gli hint del testo (income batte outcome; se testo è ambiguo:
+        preferisci income).
       - Se nessuno -> tenta inferenze (prima outcome; poi income).
     """
     out = [c for c in (outcome or []) if c in allowed_outcome]

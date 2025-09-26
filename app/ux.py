@@ -15,14 +15,17 @@ EMOJI = {
     "account": "💳",
     "date": "📅",
     "link": "🔗",
-    # Alcune categorie comuni (espandibili)
+    # Macro
+    "Wants": "✨",
+    "Needs": "📌",
+    "Savings": "🏦",
+    # Alcune specifiche comuni (espandibili)
     "Supermarket": "🛒",
     "Eating Out and Takeway": "🍽️",
     "Benzina": "⛽",
     "Travel": "✈️",
     "Casa": "🏠",
     "Subscriptions": "🔁",
-    "Savings": "🏦",
     "Learning": "📚",
     "Fun": "🎉",
     "Ballo": "🕺",
@@ -73,26 +76,54 @@ def fmt_date(d: date) -> str:
     return d.strftime("%d/%m/%Y")
 
 
+_MD_ESCAPE = "\\`*_[]()~>#+-=|{}.!".replace(".", "")  # tieni il punto fuori
+
+
+def _escape_md(text: str) -> str:
+    """Escape minimale per Markdown (Telegram legacy)."""
+    out = []
+    for ch in text:
+        if ch in _MD_ESCAPE:
+            out.append(f"\\{ch}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _fmt_categories_line(categories: list[str] | None) -> str | None:
+    if not categories:
+        return None
+    parts = [f"{emoji_for_category(c)} {c}" for c in categories]
+    return " • ".join(parts)
+
+
 @dataclass
 class TxnView:
     description: str
-    amount: Decimal  # NotionTx.amount è Decimal
+    amount: Decimal  # manteniamo precisione
     account: str | None
     currency: str
     date: date
     notion_url: str | None = None
-    category: str | None = None
+    categories: list[str] | None = None  # <<— ora supporta 0..n categorie
 
     def confirmation_message(self) -> str:
         parts = [
             f"{EMOJI['ok']} *Spesa registrata*",
-            f"{EMOJI['desc']} *{self.description}*",
-            f"{emoji_for_account(self.account)} {self.account or '—'}",
-            f"{EMOJI['amount']} {fmt_amount_eur(self.amount)}",
-            f"{EMOJI['date']} {fmt_date(self.date)}",
+            f"{EMOJI['desc']} *{_escape_md(self.description)}*",
         ]
-        if self.category:
-            parts.insert(2, f"{emoji_for_category(self.category)} {self.category}")
+
+        cats_line = _fmt_categories_line(self.categories)
+        if cats_line:
+            parts.append(cats_line)
+
+        parts.extend(
+            [
+                f"{emoji_for_account(self.account)} {self.account or '—'}",
+                f"{EMOJI['amount']} {fmt_amount_eur(self.amount)}",
+                f"{EMOJI['date']} {fmt_date(self.date)}",
+            ]
+        )
 
         if self.notion_url:
             parts.append(f"{EMOJI['link']} [Apri in Notion]({self.notion_url})")
@@ -104,5 +135,5 @@ def friendly_parse_error(example: str = "10€ benzina con Hype ieri") -> str:
     return (
         f"{EMOJI['err']} *Non ho capito bene.*\n"
         f"Puoi riscrivere includendo *importo* e *account*?\n\n"
-        f"Esempio: _{example}_"
+        f"Esempio: _{_escape_md(example)}_"
     )

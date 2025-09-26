@@ -19,7 +19,7 @@ taxonomy = Taxonomy()
 def _coerce_iter(x: Any) -> list[str]:
     if x is None:
         return []
-    if isinstance(x, (list, tuple, set)):
+    if isinstance(x, list | tuple | set):
         return [str(i) for i in x]
     # supporta anche dict/Notion payload già normalizzati altrove
     return [str(x)]

@@ -96,12 +96,8 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         # 6) Salvataggio Notion (sync) in thread separato
         url = await asyncio.to_thread(gateway.save_transaction, notion_tx)
 
-        # 7) Risposta utente (UX con emoji)
-        category = None
-        if notion_tx.outcome_categories:
-            category = notion_tx.outcome_categories[0]
-        elif notion_tx.income_categories:
-            category = notion_tx.income_categories[0]
+        # 7) Risposta utente (UX con emoji + tutte le categorie)
+        categories = notion_tx.outcome_categories or notion_tx.income_categories or []
 
         view = TxnView(
             description=notion_tx.description,
@@ -110,7 +106,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             currency="EUR",
             date=notion_tx.date,
             notion_url=url,
-            category=category,
+            categories=categories,
         )
 
         await msg.reply_text(
@@ -126,7 +122,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             user_msg = "⚠️ Account non valido. Prova a specificare Hype, Revolut o Contanti."
         elif "unknown category" in emsg or "provide at least one" in emsg:
             user_msg = (
-                "⚠️ Categoria non riconosciuta. Aggiungi dettagli (es. 'al bar', 'supermercato')."
+                "⚠️ Categoria non riconosciuta. Aggiungi dettagli " "(es. 'al bar', 'supermercato')."
             )
         elif "amount must be > 0" in emsg:
             user_msg = "⚠️ L'importo deve essere maggiore di 0."
@@ -138,7 +134,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 # --- COSTRUZIONE APP (sincrona, mypy-friendly) ---
-def build_application() -> Application:
+def build_application() -> Application[Any, Any, Any, Any, Any, Any]:
     # Carichiamo tassonomia PRIMA di costruire l'app (sincrono)
     bootstrap_taxonomy()
 
