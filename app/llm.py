@@ -263,7 +263,7 @@ async def _call_llm(
         "model": settings.llm_model,
         "messages": messages,
         "response_format": response_format,
-        "max_tokens": 300,
+        "max_tokens": 500,
     }
     try:
         if _is_gpt5():
