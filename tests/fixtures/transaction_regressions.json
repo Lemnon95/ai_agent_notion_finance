@@ -1,0 +1,808 @@
+{
+  "today": "2026-07-09",
+  "taxonomy": {
+    "accounts": [
+      "Trade Republic",
+      "Revolut",
+      "Risparmio",
+      "Poste Italiane",
+      "Contanti",
+      "Hype"
+    ],
+    "outcome_categories": [
+      "Bollette",
+      "Subscriptions",
+      "Casa",
+      "Palestra",
+      "Integratori",
+      "Vestiario",
+      "Savings",
+      "Wants",
+      "Needs",
+      "Risparmio",
+      "Prelievo",
+      "Salute",
+      "Barbiere",
+      "Eating Out and Takeway",
+      "Supermarket",
+      "Car",
+      "Travel",
+      "Gifts & Donations",
+      "Fun",
+      "Other Outcome",
+      "Benzina",
+      "Ballo",
+      "Learning"
+    ],
+    "income_categories": [
+      "Risparmio",
+      "Prelievo",
+      "Gifts",
+      "Other Income",
+      "Salary"
+    ]
+  },
+  "cases": [
+    {
+      "id": "supermarket_decimal_comma",
+      "text": "spesa supermercato 27,90 euro con Hype oggi",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "27.90",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Supermarket"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "small_spesa_from_real_style",
+      "text": "oggi ho speso 0.44 con hype per spesa",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "0.44",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Supermarket"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "breakfast_cash",
+      "text": "cappuccino e cornetto 3,40 euro contanti oggi",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "3.40",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "pizzeria_revolut",
+      "text": "pranzo pizzeria 14,50 euro con Revolut",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "14.50",
+            "date": "2026-07-09",
+            "account": "Revolut",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "fuel_hype",
+      "text": "benzina 45 euro hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "45",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Benzina"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "barber_cash",
+      "text": "barbiere 18 euro contanti",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "18",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": ["Barbiere"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "spotify_subscription",
+      "text": "abbonamento spotify 9,99 euro su revolut",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "9.99",
+            "date": "2026-07-09",
+            "account": "Revolut",
+            "outcome_categories": ["Wants", "Subscriptions"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "electric_bill",
+      "text": "bolletta luce 63,25 euro poste italiane",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "63.25",
+            "date": "2026-07-09",
+            "account": "Poste Italiane",
+            "outcome_categories": ["Needs", "Bollette"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "gym",
+      "text": "palestra 39,90 euro con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "39.90",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Palestra"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "supplements_cash",
+      "text": "integratori omega3 12,50 euro contanti",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "12.50",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": ["Needs", "Integratori"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "pharmacy_cash",
+      "text": "farmacia 8,70 euro contanti",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "8.70",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": ["Needs", "Salute"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "salsa_lesson",
+      "text": "lezione salsa 10 euro contanti",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "10",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": ["Wants", "Ballo"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "taxi",
+      "text": "taxi 17 euro hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "17",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Travel"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "train_ticket",
+      "text": "biglietto treno 24,90 euro con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "24.90",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Travel"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_terme_fiuggi",
+      "text": "il 29 giugno ho speso 67 euro con hype per terme fiuggi",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "67",
+            "date": "2026-06-29",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Travel"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "motor_oil",
+      "text": "olio motore 19 euro hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "19",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Car"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_parking_car",
+      "text": "ieri ho speso 4.14 con hype per parcheggio auto trastevere",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "4.14",
+            "date": "2026-07-08",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Car"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_car_tax",
+      "text": "il 2 luglio ho speso 12.64 con hype per bollo macchina",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "12.64",
+            "date": "2026-07-02",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Car"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_car_service",
+      "text": "il 30 giugno ho speso 21.25 per tagliando macchina con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "21.25",
+            "date": "2026-06-30",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Car"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_highway",
+      "text": "il 29 giugno ho speso 1.40 con hype per autostrada",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "1.40",
+            "date": "2026-06-29",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Benzina"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "shoes",
+      "text": "scarpe 79,99 euro con Hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "79.99",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Vestiario"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_swimsuit_socks",
+      "text": "il 20 giugno ho speso 18.10 per costume piscina e calzini con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "18.10",
+            "date": "2026-06-20",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Vestiario"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "rent",
+      "text": "oggi ho speso 413.40 per affitto con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "413.40",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Casa"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_condo",
+      "text": "il primo luglio ho speso 50 euro per condominio con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "50",
+            "date": "2026-07-01",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Casa"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_drain_cleaner",
+      "text": "il 2 luglio ho speso 2.18 con hype per stura lavandini",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "2.18",
+            "date": "2026-07-02",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Casa"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_shutter_repair",
+      "text": "il 12 giugno ho speso 72.20 per riparazione serrande casa con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "72.20",
+            "date": "2026-06-12",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Casa"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "donation",
+      "text": "donazione 15 euro con Revolut",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "15",
+            "date": "2026-07-09",
+            "account": "Revolut",
+            "outcome_categories": ["Wants", "Gifts & Donations"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_theater_ticket",
+      "text": "il 30 giugno ho speso 10 euro in contanti per biglietto teatro per lorenzo",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "10",
+            "date": "2026-06-30",
+            "account": "Contanti",
+            "outcome_categories": ["Wants", "Fun"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_cinema",
+      "text": "il 12 giugno ho speso 7 euro per il cinema con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "7",
+            "date": "2026-06-12",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Fun"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "salary",
+      "text": "stipendio 1820 euro su Revolut oggi",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "1820",
+            "date": "2026-07-09",
+            "account": "Revolut",
+            "outcome_categories": null,
+            "income_categories": ["Salary"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_salary_first_july",
+      "text": "il primo luglio ho ricevuto con hype lo stipendio 1871 euro",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "1871",
+            "date": "2026-07-01",
+            "account": "Hype",
+            "outcome_categories": null,
+            "income_categories": ["Salary"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_interest_income",
+      "text": "il primo luglio mi sono entrati 10.74 euro di interessi su trade republic",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "10.74",
+            "date": "2026-07-01",
+            "account": "Trade Republic",
+            "outcome_categories": null,
+            "income_categories": ["Other Income"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "received_gift",
+      "text": "ho ricevuto un regalo 50 euro contanti",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "50",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": null,
+            "income_categories": ["Gifts"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_prelevato_con_hype",
+      "text": "il 25 giugno ho prelevato 71 euro con hype",
+      "expected": {
+        "kind": "transfer",
+        "transactions": [
+          {
+            "amount": "71",
+            "date": "2026-06-25",
+            "account": "Hype",
+            "outcome_categories": ["Prelievo"],
+            "income_categories": null
+          },
+          {
+            "amount": "71",
+            "date": "2026-06-25",
+            "account": "Contanti",
+            "outcome_categories": null,
+            "income_categories": ["Prelievo"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "cash_withdrawal",
+      "text": "prelievo 100 euro da Hype",
+      "expected": {
+        "kind": "transfer",
+        "transactions": [
+          {
+            "amount": "100",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Prelievo"],
+            "income_categories": null
+          },
+          {
+            "amount": "100",
+            "date": "2026-07-09",
+            "account": "Contanti",
+            "outcome_categories": null,
+            "income_categories": ["Prelievo"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_just_eat_typo_account",
+      "text": "il 3 luglio ho speso 12.20 con hyp per just eat",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "12.20",
+            "date": "2026-07-03",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_glovo",
+      "text": "oggi ho speso 13.23 con hype per glovo",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "13.23",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_kfc",
+      "text": "il 20 giugno ho speso 15.77 da kfc con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "15.77",
+            "date": "2026-06-20",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_gelato",
+      "text": "il 20 giugno ho speso 2.90 con hype per gelato",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "2.90",
+            "date": "2026-06-20",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Eating Out and Takeway"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_canone_hype",
+      "text": "il primo luglio ho speso 2.90 con hype per canone hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "2.90",
+            "date": "2026-07-01",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Subscriptions"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "history_youtube_premium",
+      "text": "il 13 giugno ho pagato l'abbonamento youtube premium 13.99 euro con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "13.99",
+            "date": "2026-06-13",
+            "account": "Hype",
+            "outcome_categories": ["Wants", "Subscriptions"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "savings_destination_only",
+      "text": "spostato 200 euro su Risparmio",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "200",
+            "date": "2026-07-09",
+            "account": "Risparmio",
+            "outcome_categories": null,
+            "income_categories": ["Risparmio"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "transfer_two_accounts",
+      "text": "trasferito 50 euro da Hype a Revolut",
+      "expected": {
+        "kind": "transfer",
+        "transactions": [
+          {
+            "amount": "50",
+            "date": "2026-07-09",
+            "account": "Hype",
+            "outcome_categories": ["Prelievo"],
+            "income_categories": null
+          },
+          {
+            "amount": "50",
+            "date": "2026-07-09",
+            "account": "Revolut",
+            "outcome_categories": null,
+            "income_categories": ["Prelievo"]
+          }
+        ]
+      }
+    },
+    {
+      "id": "italian_month_supplement",
+      "text": "il 6 luglio ho speso 41.31 con hype per integratore omega-3",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "41.31",
+            "date": "2026-07-06",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Integratori"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "italian_month_health",
+      "text": "il 6 luglio ho speso 9.71 per gocce occhi con hype",
+      "expected": {
+        "kind": "single",
+        "transactions": [
+          {
+            "amount": "9.71",
+            "date": "2026-07-06",
+            "account": "Hype",
+            "outcome_categories": ["Needs", "Salute"],
+            "income_categories": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "ambiguous_gift_should_use_llm",
+      "text": "il 6 luglio ho speso 3.80 con hype per regalo fiori maestri salsa",
+      "expected": null
+    },
+    {
+      "id": "unknown_category_should_use_llm",
+      "text": "ho speso 12 con hype per una cosa strana",
+      "expected": null
+    },
+    {
+      "id": "history_cents_ambiguous_should_use_llm",
+      "text": "il 25 giugno ho speso 58 centesimi con hype per valigia ritage",
+      "expected": null
+    },
+    {
+      "id": "history_repellent_ambiguous_should_use_llm",
+      "text": "il 21 giugno ho speso 16.99 con hype per repellente vespe",
+      "expected": null
+    }
+  ]
+}

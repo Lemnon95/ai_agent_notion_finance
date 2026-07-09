@@ -8,6 +8,7 @@ from collections.abc import Iterable
 # --- Sinonimi/alias ---
 
 ACCOUNT_SYNONYMS = {
+    "hyp": "Hype",
     "hype next": "Hype",
     "hype card": "Hype",
     "contante": "Contanti",
@@ -82,6 +83,16 @@ EATING_OUT_HINTS = {
     "pizzeria",
     "ristorante",
     "aperitivo",
+    "gelato",
+    "glovo",
+    "granita",
+    "granite",
+    "just eat",
+    "kfc",
+    "redbull",
+    "suppli",
+    "supplì",
+    "sushi",
 }
 
 # Mapping keyword -> categoria outcome
@@ -107,13 +118,41 @@ KEYWORD_TO_OUTCOME = [
         "Fun",
     ),
     ({"supermercato", "spesa", "esselunga"}, "Supermarket"),
-    ({"benzina", "carburante", "gas"}, "Benzina"),
+    ({"bolletta", "bollette", "utenza", "luce"}, "Bollette"),
+    ({"benzina", "carburante", "gas", "autostrada"}, "Benzina"),
     ({"parrucchiere", "barbiere", "taglio", "barber"}, "Barbiere"),
     ({"palestra", "abbonamento palestra"}, "Palestra"),
-    ({"farmacia", "medicina", "medicinale"}, "Salute"),
+    ({"farmacia", "medicina", "medicinale", "collirio", "gocce occhi", "occhi"}, "Salute"),
+    ({"integratore", "integratori", "magnesio", "omega3", "omega-3"}, "Integratori"),
     ({"spotify", "netflix", "abbonamento", "subscription"}, "Subscriptions"),
-    ({"taxi", "treno", "bus", "aereo"}, "Travel"),
-    ({"olio motore", "cambio olio", "carrozzeria", "assicurazione auto"}, "Car"),
+    ({"canone hype", "chatgpt", "youtube premium"}, "Subscriptions"),
+    ({"taxi", "treno", "bus", "aereo", "terme", "hotel"}, "Travel"),
+    (
+        {
+            "bollo",
+            "olio motore",
+            "cambio olio",
+            "carrozzeria",
+            "assicurazione auto",
+            "parcheggio",
+            "tagliando",
+        },
+        "Car",
+    ),
+    (
+        {
+            "affitto",
+            "condominio",
+            "riparazione serrande",
+            "serrande",
+            "stura lavandini",
+            "zanzariera",
+        },
+        "Casa",
+    ),
+    ({"calzini", "costume", "scarpe", "vestito", "vestiti", "abbigliamento"}, "Vestiario"),
+    ({"salsa", "bachata", "lezione salsa", "ballo", "ballare"}, "Ballo"),
+    ({"cinema", "teatro"}, "Fun"),
     ({"regalo", "donazione", "donation"}, "Gifts & Donations"),
     ({"salvadanaio", "winnies"}, "Salvadanaio Winnies"),
 ]

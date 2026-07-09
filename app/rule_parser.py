@@ -9,7 +9,12 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 from .models import NotionTx
-from .normalizer import enforce_xor_categories, normalize_account, normalize_outcome
+from .normalizer import (
+    ACCOUNT_SYNONYMS,
+    enforce_xor_categories,
+    normalize_account,
+    normalize_outcome,
+)
 from .taxonomy import Taxonomy
 
 
@@ -20,9 +25,31 @@ class RuleParseResult:
 
 
 _AMOUNT_WITH_CURRENCY_RE = re.compile(r"(?<!\d)(\d+(?:[,.]\d{1,2})?)\s*(?:€|eur|euro)", re.I)
+_CENTS_AMOUNT_RE = re.compile(r"(?<!\d)(\d{1,2})\s*(?:centesimi|cent)", re.I)
+_DECIMAL_AMOUNT_RE = re.compile(r"(?<!\d)(\d+[,.]\d{1,2})(?!\d)", re.I)
 _AMOUNT_RE = re.compile(r"(?<!\d)(\d+(?:[,.]\d{1,2})?)(?!\d)", re.I)
 _ISO_DATE_RE = re.compile(r"\b(\d{4}-\d{2}-\d{2})\b")
 _IT_DATE_RE = re.compile(r"\b(\d{1,2})/(\d{1,2})/(\d{4})\b")
+_MONTHS_IT = {
+    "gennaio": 1,
+    "febbraio": 2,
+    "marzo": 3,
+    "aprile": 4,
+    "maggio": 5,
+    "giugno": 6,
+    "luglio": 7,
+    "agosto": 8,
+    "settembre": 9,
+    "ottobre": 10,
+    "novembre": 11,
+    "dicembre": 12,
+}
+_DAY_WORDS_IT = {"primo": 1}
+_IT_MONTH_DATE_RE = re.compile(
+    rf"\b(?:(?:il|l')\s*)?(\d{{1,2}}|{'|'.join(_DAY_WORDS_IT)})\s+"
+    rf"({'|'.join(_MONTHS_IT)})(?:\s+(\d{{4}}))?\b",
+    re.I,
+)
 
 
 def parse_with_rules(text: str, taxonomy: Taxonomy) -> RuleParseResult | None:
@@ -62,6 +89,8 @@ def parse_with_rules(text: str, taxonomy: Taxonomy) -> RuleParseResult | None:
             allowed_outcome=set(taxonomy.outcome_categories),
             allowed_income=set(taxonomy.income_categories),
         )
+        if outcome_categories == ["Other Outcome"]:
+            return None
     if not (outcome_categories or income_categories):
         return None
 
@@ -81,16 +110,29 @@ def _extract_amount(text: str) -> Decimal | None:
     if match:
         return Decimal(match.group(1).replace(",", "."))
 
-    text_without_dates = _IT_DATE_RE.sub(" ", _ISO_DATE_RE.sub(" ", text))
-    match = _AMOUNT_RE.search(text_without_dates)
+    text_without_dates = _strip_dates_from_amount_candidates(text)
+    cents_match = _CENTS_AMOUNT_RE.search(text_without_dates)
+    if cents_match:
+        return Decimal(cents_match.group(1)) / Decimal("100")
+
+    match = _DECIMAL_AMOUNT_RE.search(text_without_dates) or _AMOUNT_RE.search(text_without_dates)
     if not match:
         return None
     return Decimal(match.group(1).replace(",", "."))
 
 
-def _extract_date(text: str) -> dt.date:
+def _today() -> dt.date:
     tz = ZoneInfo(os.getenv("TIMEZONE", "Europe/Rome"))
-    today = dt.datetime.now(tz).date()
+    return dt.datetime.now(tz).date()
+
+
+def _strip_dates_from_amount_candidates(text: str) -> str:
+    without_numeric_dates = _IT_DATE_RE.sub(" ", _ISO_DATE_RE.sub(" ", text))
+    return _IT_MONTH_DATE_RE.sub(" ", without_numeric_dates)
+
+
+def _extract_date(text: str) -> dt.date:
+    today = _today()
     normalized = text.casefold()
 
     if "l'altro ieri" in normalized or "altro ieri" in normalized:
@@ -109,6 +151,15 @@ def _extract_date(text: str) -> dt.date:
         day, month, year = (int(part) for part in it_date.groups())
         return dt.date(year, month, day)
 
+    it_month_date = _IT_MONTH_DATE_RE.search(normalized)
+    if it_month_date:
+        day_s, month_s, year_s = it_month_date.groups()
+        year = int(year_s) if year_s else today.year
+        try:
+            return dt.date(year, _MONTHS_IT[month_s], _parse_italian_day(day_s))
+        except ValueError:
+            return today
+
     return today
 
 
@@ -120,7 +171,20 @@ def _find_account_mentions(text: str, accounts: list[str]) -> list[str]:
         match = re.search(pattern, normalized)
         if match:
             found.append((match.start(), account))
-    return [account for _, account in sorted(found)]
+    for alias, account in ACCOUNT_SYNONYMS.items():
+        if account not in accounts:
+            continue
+        pattern = rf"(?<!\w){re.escape(_normalize(alias))}(?!\w)"
+        match = re.search(pattern, normalized)
+        if match:
+            found.append((match.start(), account))
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for _, account in sorted(found):
+        if account not in seen:
+            seen.add(account)
+            ordered.append(account)
+    return ordered
 
 
 def _parse_transfer(
@@ -140,7 +204,10 @@ def _parse_transfer(
         ("a", "ad", "su", "sul", "sulla", "in", "verso", "nel", "nella"),
     )
 
-    if source and not destination and _contains_word(text, "prelievo"):
+    if not source and len(accounts) == 1 and _looks_like_cash_withdrawal(text):
+        source = accounts[0]
+
+    if source and not destination and _looks_like_cash_withdrawal(text):
         destination = normalize_account("Contanti", set(taxonomy.accounts))
 
     if source and destination and source != destination:
@@ -190,14 +257,31 @@ def _parse_transfer(
 def _looks_like_transfer(text: str) -> bool:
     return any(
         _contains_word(text, keyword)
-        for keyword in ("spostato", "spostare", "trasferito", "trasferire", "prelievo", "versato")
+        for keyword in (
+            "spostato",
+            "spostare",
+            "trasferito",
+            "trasferire",
+            "prelevato",
+            "prelevare",
+            "prelievo",
+            "versato",
+        )
     )
+
+
+def _looks_like_cash_withdrawal(text: str) -> bool:
+    return any(_contains_word(text, keyword) for keyword in ("prelevato", "prelevare", "prelievo"))
 
 
 def _income_categories_from_text(text: str, taxonomy: Taxonomy) -> list[str] | None:
     if _contains_word(text, "stipendio"):
         salary = _canon("Salary", taxonomy.income_categories)
         return [salary] if salary else None
+
+    if any(_contains_word(text, word) for word in ("interessi", "entrati", "entrato")):
+        other = _canon("Other Income", taxonomy.income_categories)
+        return [other] if other else None
 
     gift_words = ("ricevuto", "ricevuta", "ricevere", "entrata", "accredito", "incassato")
     if _contains_word(text, "regalo") and any(_contains_word(text, word) for word in gift_words):
@@ -260,6 +344,7 @@ def _with_macro(categories: list[str] | None, allowed: list[str]) -> list[str] |
         "Ballo": "Wants",
         "Palestra": "Wants",
         "Vestiario": "Wants",
+        "Gifts & Donations": "Wants",
         "Supermarket": "Needs",
         "Bollette": "Needs",
         "Casa": "Needs",
@@ -284,6 +369,13 @@ def _contains_word(text: str, word: str) -> bool:
 def _canon(value: str, allowed: list[str]) -> str | None:
     canon = {item.casefold(): item for item in allowed}
     return canon.get(value.casefold())
+
+
+def _parse_italian_day(value: str) -> int:
+    word = _DAY_WORDS_IT.get(value.casefold())
+    if word is not None:
+        return word
+    return int(value)
 
 
 def _normalize(text: str) -> str:

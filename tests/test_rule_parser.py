@@ -1,6 +1,9 @@
 import datetime as dt
 from decimal import Decimal
 
+from pytest import MonkeyPatch
+
+import app.rule_parser as rule_parser
 from app.rule_parser import parse_with_rules
 from app.taxonomy import Taxonomy
 
@@ -16,6 +19,8 @@ def _taxonomy() -> Taxonomy:
             "Barbiere",
             "Prelievo",
             "Risparmio",
+            "Integratori",
+            "Salute",
             "Other Outcome",
         ],
         income_categories=["Salary", "Gifts", "Prelievo", "Risparmio", "Other Income"],
@@ -65,3 +70,36 @@ def test_rules_do_not_read_dates_as_amounts() -> None:
     tx = result.transactions[0]
     assert tx.amount == Decimal("10")
     assert tx.date == dt.date(2026, 7, 9)
+
+
+def test_rules_parse_italian_month_date_without_using_day_as_amount(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(rule_parser, "_today", lambda: dt.date(2026, 7, 9))
+
+    result = parse_with_rules(
+        "il 6 luglio ho speso 17.99 con hype per integratore magnesio",
+        _taxonomy(),
+    )
+
+    assert result is not None
+    tx = result.transactions[0]
+    assert tx.amount == Decimal("17.99")
+    assert tx.date == dt.date(2026, 7, 6)
+    assert tx.outcome_categories == ["Needs", "Integratori"]
+
+
+def test_rules_parse_health_keywords_from_italian_month_date(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(rule_parser, "_today", lambda: dt.date(2026, 7, 9))
+
+    result = parse_with_rules("il 6 luglio ho speso 9.71 per gocce occhi con hype", _taxonomy())
+
+    assert result is not None
+    tx = result.transactions[0]
+    assert tx.amount == Decimal("9.71")
+    assert tx.date == dt.date(2026, 7, 6)
+    assert tx.outcome_categories == ["Needs", "Salute"]
+
+
+def test_rules_leave_other_outcome_fallback_to_llm() -> None:
+    assert parse_with_rules("ho speso 12 con hype per una cosa strana", _taxonomy()) is None
