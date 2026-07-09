@@ -1,36 +1,36 @@
 # ai_agent_notion_finance
 
-Bot Telegram per registrare transazioni personali in Notion a partire da frasi naturali in
-italiano.
+A Telegram bot that records personal finance transactions in Notion from natural-language
+Italian messages.
 
-L'utente scrive, per esempio, `spesa supermercato 27,90 euro con Hype oggi`; il bot estrae una o
-piu transazioni strutturate, le valida contro la tassonomia reale letta da Notion e crea le pagine
-nel database `Transactions`.
+For example, the user can send `spesa supermercato 27,90 euro con Hype oggi`; the bot extracts one
+or more structured transactions, validates them against the live taxonomy read from Notion, and
+creates pages in the `Transactions` database.
 
-## Cosa Fa
+## What It Does
 
-- registra spese e entrate da Telegram;
-- legge account e categorie direttamente dalle relation Notion;
-- usa regole deterministiche per i casi frequenti;
-- usa un LLM come fallback per frasi meno standard;
-- gestisce trasferimenti/prelievi chiari creando due righe Notion;
-- evita duplicati immediati con una cache di idempotenza a TTL;
-- conferma su Telegram con importo, data, account, categorie e link Notion.
+- records expenses and income from Telegram;
+- reads accounts and categories directly from Notion relations;
+- uses deterministic rules for common cases;
+- falls back to an LLM for less standard messages;
+- handles clear transfers and withdrawals by creating two Notion rows;
+- avoids immediate duplicates with an in-memory TTL idempotency cache;
+- replies on Telegram with amount, date, account, categories, and the Notion link.
 
-Esempi supportati:
+Supported examples:
 
 ```text
-spesa supermercato 27,90€ con Hype oggi
-stipendio 1820€ su Revolut
-ho ricevuto un regalo 50€ contanti
-prelievo 100€ da Hype
-spostato 200€ su Risparmio
+spesa supermercato 27,90 euro con Hype oggi
+stipendio 1820 euro su Revolut
+ho ricevuto un regalo 50 euro contanti
+prelievo 100 euro da Hype
+spostato 200 euro su Risparmio
 ```
 
-Per un trasferimento chiaro, il bot puo creare due righe:
+For a clear transfer, the bot can create two rows:
 
-- `Outcome` sull'account di origine;
-- `Income` sull'account di destinazione.
+- an `Outcome` row on the source account;
+- an `Income` row on the destination account.
 
 ## Stack
 
@@ -38,34 +38,34 @@ Per un trasferimento chiaro, il bot puo creare due righe:
 - python-telegram-bot 21.x
 - Notion API via `notion-client`
 - Pydantic v2
-- LiteLLM per OpenAI/Groq
+- LiteLLM for OpenAI/Groq
 - Ruff, Black, mypy, pytest
 
-## Architettura
+## Architecture
 
 ```text
 Telegram text
   -> app.telegram_bot.handle_text
   -> app.finance_service.FinanceService.process_text
-  -> app.rule_parser.parse_with_rules oppure app.llm.extract_transaction
+  -> app.rule_parser.parse_with_rules or app.llm.extract_transaction
   -> app.models.ExtractedTx / app.models.NotionTx
   -> app.idempotency
   -> app.notion_gateway.NotionGateway.save_transaction
   -> Notion
 ```
 
-File principali:
+Main files:
 
-- `app/finance_service.py`: orchestrazione applicativa, parser rules/LLM, dedupe e salvataggio.
-- `app/rule_parser.py`: parser deterministico per casi semplici e trasferimenti chiari.
-- `app/llm.py`: prompt runtime, schema JSON dinamico e chiamata LiteLLM.
-- `app/models.py`: validazione Pydantic.
-- `app/normalizer.py`: normalizzazione difensiva di account/categorie.
-- `app/notion_gateway.py`: schema Notion, tassonomia e creazione pagine.
-- `app/telegram_bot.py`: handler Telegram e UX di risposta.
-- `app/ux.py`: formattazione messaggi Telegram.
+- `app/finance_service.py`: application orchestration, rules/LLM selection, dedupe, and saving.
+- `app/rule_parser.py`: deterministic parser for simple cases and clear transfers.
+- `app/llm.py`: runtime prompt, dynamic JSON schema, and LiteLLM call.
+- `app/models.py`: Pydantic validation.
+- `app/normalizer.py`: defensive account/category normalization.
+- `app/notion_gateway.py`: Notion schema checks, taxonomy loading, and page creation.
+- `app/telegram_bot.py`: Telegram handlers and response flow.
+- `app/ux.py`: Telegram message formatting.
 
-Documentazione per agenti AI:
+AI-agent documentation:
 
 - `AGENTS.md`
 - `CLAUDE.md`
@@ -78,51 +78,51 @@ Documentazione per agenti AI:
 make venv
 ```
 
-Il comando crea `.venv` e installa `requirements.txt`.
+This creates `.venv` and installs `requirements.txt`.
 
-Se la venv esiste gia:
+If the virtual environment already exists:
 
 ```bash
 make install
 ```
 
-I tool di sviluppo (`ruff`, `black`, `mypy`, `pytest`) devono essere disponibili nella venv per i
-target di qualita.
+Development tools (`ruff`, `black`, `mypy`, `pytest`) must be available in the virtual environment
+for the quality targets.
 
-## Configurazione
+## Configuration
 
-Crea un file `.env` nella root del progetto:
+Create a `.env` file in the project root:
 
 ```env
 TELEGRAM_BOT_TOKEN=...
 NOTION_TOKEN=...
 NOTION_DB_ID=...
 OPENAI_API_KEY=...
-# oppure GROQ_API_KEY=...
+# or GROQ_API_KEY=...
 
 LLM_MODEL=gpt-4o-mini-2024-07-18
 TIMEZONE=Europe/Rome
 ENVIRONMENT=local
 ```
 
-Variabili richieste:
+Required variables:
 
 - `TELEGRAM_BOT_TOKEN`
 - `NOTION_TOKEN`
 - `NOTION_DB_ID`
-- almeno una tra `OPENAI_API_KEY` e `GROQ_API_KEY`
+- at least one of `OPENAI_API_KEY` or `GROQ_API_KEY`
 
-Variabili opzionali:
+Optional variables:
 
 - `LLM_MODEL`
 - `TIMEZONE`
 - `ENVIRONMENT`
 
-Non committare `.env`.
+Do not commit `.env`.
 
-## Schema Notion
+## Notion Schema
 
-Il database principale deve avere queste proprieta:
+The main database must expose these properties:
 
 - `Name`: `title`
 - `Amount`: `number`
@@ -130,40 +130,40 @@ Il database principale deve avere queste proprieta:
 - `Account`: `relation`
 - `Outcome`: `relation`
 - `Income`: `relation`
-- `Notes`: opzionale, `rich_text`
+- `Notes`: optional `rich_text`
 
-Le relation `Account`, `Outcome` e `Income` devono puntare a database con una title property
-chiamata `Name`. I titoli di quelle pagine diventano la tassonomia runtime del bot.
+The `Account`, `Outcome`, and `Income` relations must point to databases whose title property is
+called `Name`. Those page titles become the bot's runtime taxonomy.
 
-Regola importante: ogni transazione deve avere `Outcome` oppure `Income`, mai entrambe.
+Important rule: every transaction must have either `Outcome` or `Income`, never both.
 
-Per dettagli piu completi: `docs/notion-schema.md`.
+For more detail, see `docs/notion-schema.md`.
 
-## Avvio
+## Running
 
-Verifica prima schema e tassonomia Notion:
+First verify the Notion schema and taxonomy:
 
 ```bash
 make schema-verify
 make taxonomy-dump
 ```
 
-Avvia il bot in polling locale:
+Start the bot with local polling:
 
 ```bash
 make bot-env
 ```
 
-oppure:
+or:
 
 ```bash
 make bot
 ```
 
-`make bot-env` richiede `.env`. `make bot` carica `.env` se presente e verifica che
-`TELEGRAM_BOT_TOKEN` sia impostato.
+`make bot-env` requires `.env`. `make bot` loads `.env` when present and checks that
+`TELEGRAM_BOT_TOKEN` is set.
 
-## Comandi Utili
+## Useful Commands
 
 ```bash
 make help
@@ -180,41 +180,43 @@ make bot-env
 make bot
 ```
 
-Note:
+Notes:
 
-- `make check` esegue lint, typecheck e test.
-- `make smoke-llm` e `make smoke-llm-batch` chiamano Notion e LLM reali, ma non scrivono pagine.
-- `make bot` e `make bot-env` possono scrivere nuove pagine Notion quando arrivano messaggi
-  Telegram.
+- `make check` runs linting, type checking, and tests.
+- `make smoke-llm` and `make smoke-llm-batch` call real Notion and LLM services, but do not create
+  Notion pages.
+- `make bot` and `make bot-env` can create new Notion pages when Telegram messages arrive.
 
-## Test
+## Tests
 
 ```bash
 make check
 ```
 
-La suite copre:
+The test suite covers:
 
-- normalizzazione account/categorie;
-- validazione Pydantic;
-- UX Telegram;
-- parser deterministico;
-- idempotenza;
-- orchestrazione `FinanceService` con gateway finto.
+- account/category normalization;
+- Pydantic validation;
+- Telegram UX formatting;
+- deterministic rule parsing;
+- idempotency;
+- `FinanceService` orchestration with a fake gateway.
 
-## Note Di Dominio
+## Domain Notes
 
-- La tassonomia non e hardcoded come fonte di verita: viene letta da Notion al bootstrap.
-- Il parser regolistico gestisce solo casi chiari; frasi ambigue passano all'LLM.
-- I trasferimenti tra account possono essere rappresentati come due righe nello stesso database.
-- `Eating Out and Takeway` e scritto cosi perche puo essere il titolo reale in Notion.
-- L'idempotenza attuale e in-memory: evita retry ravvicinati, ma non sopravvive a un riavvio.
+- The taxonomy is not hardcoded as the source of truth: it is read from Notion at bootstrap.
+- The rule parser handles only clear cases; ambiguous messages fall back to the LLM.
+- Transfers between accounts can be represented as two rows in the same Notion database.
+- `Eating Out and Takeway` is intentionally spelled that way because it may be the real Notion
+  title.
+- Current idempotency is in-memory: it prevents close retries, but does not survive a process
+  restart.
 
-## Stato Del Progetto
+## Project Direction
 
-Il progetto e pensato come assistente personale pragmatico: Notion rimane il luogo dove leggere,
-controllare e correggere i dati; Telegram e l'interfaccia rapida; il codice applica controlli
-prima di scrivere.
+The project is meant to be a pragmatic personal assistant: Notion remains the place to inspect,
+audit, and correct data; Telegram is the fast input surface; the code applies validation and
+guardrails before writing.
 
-La direzione consigliata e continuare a spostare i casi frequenti verso regole deterministiche e
-lasciare l'LLM come fallback intelligente.
+The recommended direction is to keep moving frequent cases into deterministic rules and use the
+LLM as an intelligent fallback.
