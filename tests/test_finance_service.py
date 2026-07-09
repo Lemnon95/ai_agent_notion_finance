@@ -1,6 +1,10 @@
 import asyncio
+import datetime as dt
 import os
+from decimal import Decimal
 from typing import Any, cast
+
+from pytest import MonkeyPatch
 
 from app.idempotency import IdempotencyStore
 from app.models import NotionTx
@@ -12,12 +16,13 @@ os.environ.setdefault("NOTION_DB_ID", "test")
 os.environ.setdefault("OPENAI_API_KEY", "test")
 
 from app.finance_service import FinanceService  # noqa: E402
+from app.settings import settings  # noqa: E402
 
 
 def _taxonomy() -> Taxonomy:
     return Taxonomy(
         accounts=["Hype", "Contanti", "Risparmio"],
-        outcome_categories=["Needs", "Supermarket", "Prelievo", "Risparmio"],
+        outcome_categories=["Needs", "Supermarket", "Prelievo", "Risparmio", "Barbiere"],
         income_categories=["Salary", "Gifts", "Prelievo", "Risparmio"],
     )
 
@@ -57,3 +62,44 @@ def test_finance_service_saves_transfer_and_deduplicates_recent_retry() -> None:
     ]
     assert retry.duplicate
     assert len(gateway.saved) == 2
+
+
+def test_finance_service_conservative_mode_sends_non_whitelisted_rules_to_llm(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    set_taxonomy(_taxonomy())
+    monkeypatch.setattr(settings, "rule_parser_mode", "conservative")
+
+    async def fake_extract(self: FinanceService, text: str) -> NotionTx:
+        return NotionTx(
+            description=text,
+            amount=Decimal("18"),
+            date=dt.date(2026, 7, 9),
+            account="Contanti",
+            outcome_categories=["Barbiere"],
+        )
+
+    monkeypatch.setattr(FinanceService, "_extract_with_llm", fake_extract)
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    result = asyncio.run(service.process_text("barbiere 18 euro contanti", chat_id=123))
+
+    assert result.parser == "llm"
+    assert result.saved[0].tx.outcome_categories == ["Barbiere"]
+    assert len(gateway.saved) == 1
+
+
+def test_finance_service_balanced_mode_accepts_non_whitelisted_rule_categories(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    set_taxonomy(_taxonomy())
+    monkeypatch.setattr(settings, "rule_parser_mode", "balanced")
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    result = asyncio.run(service.process_text("barbiere 18 euro contanti", chat_id=123))
+
+    assert result.parser == "rules"
+    assert result.saved[0].tx.outcome_categories == ["Barbiere"]
+    assert len(gateway.saved) == 1

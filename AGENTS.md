@@ -48,11 +48,14 @@ Stack principale:
 3. `set_taxonomy()` muta in-place il singleton `taxonomy`; non riassegnarlo.
 4. Telegram riceve testo libero tramite `handle_text()`.
 5. `FinanceService.process_text()` prova prima `parse_with_rules()`.
-6. Se il parser regolistico non copre il caso, `extract_transaction()` usa LLM e JSON schema.
-7. Il JSON LLM passa da normalizzazioni difensive in `app/normalizer.py`.
-8. `ExtractedTx` valida account, importo, valuta, data e XOR outcome/income.
-9. Il servizio applica idempotenza TTL e salva una o piu `NotionTx`.
-10. `TxnView` o il messaggio transfer restituiscono conferma Markdown a Telegram.
+6. In `RULE_PARSER_MODE=conservative` usa il risultato regolistico solo per categorie whitelisted
+   ad alta confidenza; altrimenti passa all'LLM.
+7. Se il parser regolistico non copre il caso o viene scartato dal mode, `extract_transaction()`
+   usa LLM e JSON schema.
+8. Il JSON LLM passa da normalizzazioni difensive in `app/normalizer.py`.
+9. `ExtractedTx` valida account, importo, valuta, data e XOR outcome/income.
+10. Il servizio applica idempotenza TTL e salva una o piu `NotionTx`.
+11. `TxnView` o il messaggio transfer restituiscono conferma Markdown a Telegram.
 
 ## Invarianti Da Preservare
 
@@ -99,6 +102,8 @@ Variabili opzionali:
 - `LLM_MODEL` default: `gpt-4o-mini-2024-07-18`
 - `TIMEZONE` default: `Europe/Rome`
 - `ENVIRONMENT` default: `local`
+- `RULE_PARSER_MODE` default: `conservative`; usare `balanced` per fidarsi di piu del parser
+  regolistico.
 - `ACCOUNTS`, `OUTCOME_CATEGORIES`, `INCOME_CATEGORIES`: presenti in settings, ma il runtime del bot
   usa la tassonomia letta da Notion.
 

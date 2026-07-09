@@ -103,6 +103,7 @@ OPENAI_API_KEY=...
 LLM_MODEL=gpt-4o-mini-2024-07-18
 TIMEZONE=Europe/Rome
 ENVIRONMENT=local
+RULE_PARSER_MODE=conservative
 ```
 
 Required variables:
@@ -117,6 +118,7 @@ Optional variables:
 - `LLM_MODEL`
 - `TIMEZONE`
 - `ENVIRONMENT`
+- `RULE_PARSER_MODE`: `conservative` by default, or `balanced`
 
 Do not commit `.env`.
 
@@ -205,7 +207,9 @@ The test suite covers:
 ## Domain Notes
 
 - The taxonomy is not hardcoded as the source of truth: it is read from Notion at bootstrap.
-- The rule parser handles only clear cases; ambiguous messages fall back to the LLM.
+- The rule parser runs in conservative mode by default: only whitelisted, high-confidence rule
+  results are saved directly; everything else falls back to the LLM.
+- Set `RULE_PARSER_MODE=balanced` to trust the rule parser on a wider set of categories.
 - Transfers between accounts can be represented as two rows in the same Notion database.
 - `Eating Out and Takeway` is intentionally spelled that way because it may be the real Notion
   title.

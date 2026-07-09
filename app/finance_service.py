@@ -11,10 +11,23 @@ from .models import ExtractedTx, NotionTx
 from .normalizer import enforce_xor_categories, normalize_account, normalize_outcome
 from .notion_gateway import NotionGateway
 from .observability import log_event
-from .rule_parser import parse_with_rules
+from .rule_parser import RuleParseResult, parse_with_rules
+from .settings import settings
 from .taxonomy import set_taxonomy, taxonomy
 
 log = logging.getLogger(__name__)
+RuleParserMode = Literal["conservative", "balanced"]
+
+_CONSERVATIVE_OUTCOME_DETAILS = {
+    "Benzina",
+    "Bollette",
+    "Casa",
+    "Integratori",
+    "Salute",
+    "Supermarket",
+}
+_CONSERVATIVE_INCOME_CATEGORIES = {"Salary"}
+_MACRO_CATEGORIES = {"Needs", "Savings", "Wants"}
 
 
 @dataclass
@@ -54,13 +67,21 @@ class FinanceService:
 
     async def process_text(self, text: str, chat_id: int | None = None) -> ProcessResult:
         rule_result = parse_with_rules(text, taxonomy)
-        if rule_result:
+        if rule_result and _should_use_rule_result(rule_result, settings.rule_parser_mode):
             parser: Literal["rules", "llm"] = "rules"
             plan = rule_result.transactions
             plan_kind: Literal["single", "transfer"] = (
                 "transfer" if rule_result.kind == "transfer" else "single"
             )
         else:
+            if rule_result:
+                log_event(
+                    log,
+                    "rule_parser_skipped",
+                    mode=settings.rule_parser_mode,
+                    kind=rule_result.kind,
+                    count=len(rule_result.transactions),
+                )
             parser = "llm"
             plan = [await self._extract_with_llm(text)]
             plan_kind = "single"
@@ -115,3 +136,24 @@ class FinanceService:
 
         ext = ExtractedTx.model_validate(raw)
         return NotionTx.from_extracted(ext)
+
+
+def _should_use_rule_result(result: RuleParseResult, mode: RuleParserMode) -> bool:
+    if mode == "balanced":
+        return True
+
+    if result.kind == "transfer":
+        return True
+
+    if len(result.transactions) != 1:
+        return False
+
+    tx = result.transactions[0]
+    if tx.income_categories:
+        return set(tx.income_categories).issubset(_CONSERVATIVE_INCOME_CATEGORIES)
+
+    if not tx.outcome_categories:
+        return False
+
+    details = set(tx.outcome_categories) - _MACRO_CATEGORIES
+    return bool(details) and details.issubset(_CONSERVATIVE_OUTCOME_DETAILS)

@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # --- Runtime
     timezone: str = Field("Europe/Rome", alias="TIMEZONE")
     environment: Literal["local", "prod"] = Field("local", alias="ENVIRONMENT")
+    rule_parser_mode: Literal["conservative", "balanced"] = Field(
+        "conservative",
+        alias="RULE_PARSER_MODE",
+    )
 
     # --- Liste configurabili da .env
     accounts: list[str] = Field(

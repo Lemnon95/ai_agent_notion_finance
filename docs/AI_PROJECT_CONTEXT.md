@@ -22,7 +22,8 @@ Il dominio e in italiano:
 Telegram text
   -> app.telegram_bot.handle_text
   -> app.finance_service.FinanceService.process_text
-  -> app.rule_parser.parse_with_rules oppure app.llm.extract_transaction
+  -> app.rule_parser.parse_with_rules
+  -> filtro RULE_PARSER_MODE oppure app.llm.extract_transaction
   -> app.normalizer normalizzazioni e XOR, se passa da LLM
   -> app.models.ExtractedTx validazione Pydantic, se passa da LLM
   -> app.models.NotionTx payload interno, una o piu righe
@@ -70,6 +71,7 @@ Opzionali:
 - `LLM_MODEL`
 - `TIMEZONE`
 - `ENVIRONMENT`
+- `RULE_PARSER_MODE`
 - `ACCOUNTS`
 - `OUTCOME_CATEGORIES`
 - `INCOME_CATEGORIES`
@@ -177,7 +179,8 @@ La scrittura su Notion e sincrona, quindi viene eseguita dal servizio con `async
 Servizio applicativo:
 
 - prova prima il parser deterministico;
-- usa l'LLM quando le regole non coprono il testo;
+- in `RULE_PARSER_MODE=conservative` accetta dalle regole solo risultati ad alta confidenza;
+- usa l'LLM quando le regole non coprono il testo o quando il mode scarta il risultato;
 - costruisce uno o piu `NotionTx`;
 - applica idempotenza in-memory a TTL;
 - salva su Notion;
@@ -193,6 +196,9 @@ Parser deterministico per casi semplici:
 - trasferimenti/prelievi con origine e destinazione chiare.
 
 I regali ambigui vengono lasciati all'LLM.
+
+Il parser puro puo riconoscere piu casi di quanti il runtime accetti in modalita conservativa. La
+decisione finale e in `FinanceService`, non in `parse_with_rules()`.
 
 ### `app/idempotency.py`
 

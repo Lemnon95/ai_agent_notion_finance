@@ -10,6 +10,8 @@ sono la documentazione operativa condivisa per agenti AI.
 - Non leggere, stampare o committare segreti da `.env`.
 - Non hardcodare tassonomie come fonte di verita: account e categorie arrivano dalle relation Notion.
 - Preserva la regola XOR: una transazione e `Outcome` oppure `Income`, mai entrambe.
+- Il runtime usa `RULE_PARSER_MODE=conservative` di default: non assumere che ogni risultato del
+  parser regolistico venga salvato senza passare dall'LLM.
 - Ricorda che Notion e sincrono; dentro handler async usa `asyncio.to_thread()` per scritture/chiamate
   bloccanti.
 
