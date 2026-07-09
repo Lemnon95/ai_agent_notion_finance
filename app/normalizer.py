@@ -1,6 +1,7 @@
 # app/normalizer.py
 from __future__ import annotations
 
+import re
 import unicodedata
 from collections.abc import Iterable
 
@@ -28,6 +29,42 @@ def _strip_accents_lower(s: str) -> str:
     return "".join(
         c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn"
     ).lower()
+
+
+def _contains_keyword(text: str, keyword: str) -> bool:
+    normalized_keyword = _strip_accents_lower(keyword.strip())
+    if not normalized_keyword:
+        return False
+    pattern = rf"(?<!\w){re.escape(normalized_keyword)}(?!\w)"
+    return re.search(pattern, text) is not None
+
+
+def _contains_any_keyword(text: str, keywords: Iterable[str]) -> bool:
+    return any(_contains_keyword(text, keyword) for keyword in keywords)
+
+
+def _canon_allowed(value: str, allowed: set[str]) -> str | None:
+    canon = {item.casefold(): item for item in allowed}
+    return canon.get(value.strip().casefold())
+
+
+def _iter_values(values: Iterable[str] | None) -> list[str]:
+    if values is None:
+        return []
+    if isinstance(values, str):
+        return [values]
+    return [str(value) for value in values]
+
+
+def _canon_many(values: Iterable[str] | None, allowed: set[str]) -> list[str]:
+    out: list[str] = []
+    seen: set[str] = set()
+    for value in _iter_values(values):
+        canon = _canon_allowed(value, allowed)
+        if canon and canon not in seen:
+            seen.add(canon)
+            out.append(canon)
+    return out
 
 
 # Eating out (aggiunti pranzo/cena)
@@ -86,7 +123,6 @@ KEYWORD_TO_INCOME = [
     ({"stipendio", "salary"}, "Salary"),
     ({"regalo", "gift"}, "Gifts"),
     ({"prelievo"}, "Prelievo"),
-    ({"risparmio car"}, "Risparmio Car"),
     ({"risparmio"}, "Risparmio"),
     ({"other income"}, "Other Income"),
 ]
@@ -96,7 +132,7 @@ def normalize_account(acc: str | None, allowed: set[str]) -> str | None:
     """
     Tollerante a None. Applica sinonimi e ritorna:
     - l'alias normalizzato se è consentito
-    - la stringa originale se è consentita
+    - la stringa ufficiale se coincide case-insensitive con un account consentito
     - None se non deducibile/consentito
     """
     if not acc:
@@ -105,20 +141,19 @@ def normalize_account(acc: str | None, allowed: set[str]) -> str | None:
     alias = ACCOUNT_SYNONYMS.get(key)
     if alias and alias in allowed:
         return alias
-    if acc.strip() in allowed:
-        return acc.strip()
-    return None
+    canon = {a.lower(): a for a in allowed}
+    return canon.get(key)
 
 
 def _infer_outcome_from_desc(description: str, allowed: set[str]) -> str | None:
     text = _strip_accents_lower(description)
     # Eating out
-    if any(tok in text for tok in EATING_OUT_HINTS):
+    if _contains_any_keyword(text, EATING_OUT_HINTS):
         if "Eating Out and Takeway" in allowed:
             return "Eating Out and Takeway"
     # Altri mapping keyword -> categoria
     for keywords, cat in KEYWORD_TO_OUTCOME:
-        if any(k in text for k in keywords) and cat in allowed:
+        if _contains_any_keyword(text, keywords) and cat in allowed:
             return cat
     return None
 
@@ -126,7 +161,7 @@ def _infer_outcome_from_desc(description: str, allowed: set[str]) -> str | None:
 def _infer_income_from_desc(description: str, allowed: set[str]) -> str | None:
     text = _strip_accents_lower(description)
     for keywords, cat in KEYWORD_TO_INCOME:
-        if any(k in text for k in keywords) and (not allowed or cat in allowed):
+        if _contains_any_keyword(text, keywords) and (not allowed or cat in allowed):
             return cat
     return None
 
@@ -145,11 +180,12 @@ def normalize_outcome(
     fixed: list[str] = []
 
     # 1) Mappa sinonimi e tieni solo consentiti
-    for c in outcome_list or []:
+    for c in _iter_values(outcome_list):
         key = c.strip().lower()
         c2 = OUTCOME_SYNONYMS.get(key, c.strip())
-        if c2 in allowed:
-            fixed.append(c2)
+        canon = _canon_allowed(c2, allowed)
+        if canon:
+            fixed.append(canon)
 
     # 2) Se vuoto, prova inferenza dalla descrizione (solo outcome hints)
     if not fixed:
@@ -187,8 +223,8 @@ def enforce_xor_categories(
         preferisci income).
       - Se nessuno -> tenta inferenze (prima outcome; poi income).
     """
-    out = [c for c in (outcome or []) if c in allowed_outcome]
-    inc = [c for c in (income or []) if c in allowed_income]
+    out = _canon_many(outcome, allowed_outcome)
+    inc = _canon_many(income, allowed_income)
 
     text_income = _infer_income_from_desc(description, allowed_income)
     text_outcome = _infer_outcome_from_desc(description, allowed_outcome)

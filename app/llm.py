@@ -130,8 +130,13 @@ def _build_system_prompt() -> str:
         ),
         (
             "- Casi di risparmio/spostamenti verso obiettivi: 'Savings', "
-            "'Risparmio', 'Risparmio Car', 'Salvadanaio Winnies' → "
+            "'Risparmio', 'Salvadanaio Winnies' → "
             "MACRO = 'Savings'"
+        ),
+        (
+            "- Trasferimenti/prelievi tra account possono essere rappresentati come "
+            "singola riga del lato indicato nel testo: se è un'uscita usa Outcome, "
+            "se è un'entrata usa Income."
         ),
         "",
         "ALCUNE MAPPATURE DI CONTENUTO (SPECIFICA):",
@@ -201,16 +206,16 @@ def _build_system_prompt() -> str:
             '  "notes": null'
             "}"
         ),
-        "Input: 'spostato 200€ su Risparmio Car'",
+        "Input: 'spostato 200€ su Risparmio'",
         (
             "Output: {"
-            '  "description": "spostato 200€ su Risparmio Car",'
+            '  "description": "spostato 200€ su Risparmio",'
             '  "amount": 200.0,'
             '  "currency": "EUR",'
-            '  "account": "<se indicato nel testo, altrimenti deducibile>",'
+            '  "account": "Risparmio",'
             '  "date": "<oggi in ISO>",'
-            '  "outcome_categories": ["Savings", "Risparmio Car"],'
-            '  "income_categories": null,'
+            '  "outcome_categories": null,'
+            '  "income_categories": ["Risparmio"],'
             '  "notes": null'
             "}"
         ),
@@ -248,6 +253,24 @@ def _build_system_prompt() -> str:
         "Rispondi SOLO con JSON valido.",
     ]
     return "\n".join(lines) + "\n"
+
+
+def _extract_json_content(content: str) -> dict[str, Any]:
+    content = content.strip()
+
+    # Rimuovi eventuali fence ```json
+    if content.startswith("```"):
+        parts = content.split("```")
+        if len(parts) >= 3:
+            candidate = parts[1]
+            if candidate.lower().startswith("json"):
+                candidate = candidate[4:]
+            content = candidate
+
+    data: Any = json.loads(content.strip())
+    if not isinstance(data, dict):
+        raise ValueError("LLM returned non-object JSON")
+    return cast(dict[str, Any], data)
 
 
 def _is_gpt5() -> bool:
@@ -291,11 +314,15 @@ async def extract_transaction(text: str) -> dict[str, Any]:
 
     response_format = _build_schema()
 
-    try:
-        resp: Any = await _call_llm(messages, response_format)
+    async def _request(req_messages: list[dict[str, str]]) -> dict[str, Any]:
+        resp: Any = await _call_llm(req_messages, response_format)
         content: str = resp.choices[0].message.content
+        return _extract_json_content(content)
+
+    try:
+        data = await _request(messages)
     except Exception:
-        # Fallback: stesso prompt con reminder esplicito
+        # Fallback: stesso prompt con reminder esplicito, anche per JSON invalido.
         resp = await _call_llm(
             [
                 messages[0],
@@ -306,22 +333,7 @@ async def extract_transaction(text: str) -> dict[str, Any]:
             ],
             response_format,
         )
-        content = resp.choices[0].message.content
-
-    content = content.strip()
-
-    # Rimuovi eventuali fence ```json
-    if content.startswith("```"):
-        parts = content.split("```")
-        if len(parts) >= 3:
-            candidate = parts[1]
-            if candidate.lower().startswith("json"):
-                candidate = candidate[4:]
-            content = candidate
-
-    data: Any = json.loads(content)
-    if not isinstance(data, dict):
-        raise ValueError("LLM returned non-object JSON")
+        data = _extract_json_content(resp.choices[0].message.content)
 
     # ---- Enforce XOR tra outcome/income (difesa centrale) ----
     out_fixed, inc_fixed = enforce_xor_categories(
@@ -334,4 +346,4 @@ async def extract_transaction(text: str) -> dict[str, Any]:
     data["outcome_categories"] = out_fixed
     data["income_categories"] = inc_fixed
 
-    return cast(dict[str, Any], data)
+    return data

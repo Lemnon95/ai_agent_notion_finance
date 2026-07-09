@@ -35,7 +35,7 @@ SAMPLES: list[str] = [
     "stipendio 1820€ su Revolut oggi",
     "regalo 50€ contanti",
     "prelievo 100€ da Hype",
-    "spostato 200€ su Risparmio Car",
+    "spostato 200€ su Risparmio",
     # Edge
     "ho preso un caffe 1.20 euro hype ieri",
     "cena 18€",

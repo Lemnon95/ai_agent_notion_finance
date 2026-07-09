@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
+from typing import Literal
 
 EMOJI = {
     # Generici
@@ -90,10 +91,14 @@ def _escape_md(text: str) -> str:
     return "".join(out)
 
 
+def escape_md(text: str) -> str:
+    return _escape_md(text)
+
+
 def _fmt_categories_line(categories: list[str] | None) -> str | None:
     if not categories:
         return None
-    parts = [f"{emoji_for_category(c)} {c}" for c in categories]
+    parts = [f"{emoji_for_category(c)} {_escape_md(c)}" for c in categories]
     return " • ".join(parts)
 
 
@@ -106,10 +111,12 @@ class TxnView:
     date: date
     notion_url: str | None = None
     categories: list[str] | None = None  # <<— ora supporta 0..n categorie
+    kind: Literal["outcome", "income"] = "outcome"
 
     def confirmation_message(self) -> str:
+        title = "Entrata registrata" if self.kind == "income" else "Spesa registrata"
         parts = [
-            f"{EMOJI['ok']} *Spesa registrata*",
+            f"{EMOJI['ok']} *{title}*",
             f"{EMOJI['desc']} *{_escape_md(self.description)}*",
         ]
 
@@ -119,7 +126,8 @@ class TxnView:
 
         parts.extend(
             [
-                f"{emoji_for_account(self.account)} {self.account or '—'}",
+                f"{emoji_for_account(self.account)} "
+                f"{_escape_md(self.account) if self.account else '—'}",
                 f"{EMOJI['amount']} {fmt_amount_eur(self.amount)}",
                 f"{EMOJI['date']} {fmt_date(self.date)}",
             ]

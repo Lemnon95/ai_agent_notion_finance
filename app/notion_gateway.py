@@ -15,6 +15,7 @@ class NotionGateway:
         self.client = Client(auth=settings.notion_token.get_secret_value())
         self.db_id = settings.notion_db_id
         self._props = self._db_properties()  # cache
+        self._title_id_cache: dict[str, dict[str, str]] = {}
 
     @staticmethod
     def _page_url(page_id: str) -> str:
@@ -61,6 +62,7 @@ class NotionGateway:
     def _list_titles_from_relation(self, prop_name: str, title_prop: str = "Name") -> list[str]:
         db_id = self._relation_db_id(prop_name)
         titles: list[str] = []
+        title_ids: dict[str, str] = {}
         cursor: str | None = None
         while True:
             q = cast(
@@ -71,6 +73,7 @@ class NotionGateway:
                 name = self._extract_title(page, title_prop=title_prop)
                 if name:
                     titles.append(name)
+                    title_ids.setdefault(name, cast(str, page["id"]))
             if q.get("has_more") and q.get("next_cursor"):
                 cursor = cast(str, q["next_cursor"])
                 continue
@@ -82,6 +85,7 @@ class NotionGateway:
             if n not in seen:
                 seen.add(n)
                 out.append(n)
+        self._title_id_cache[db_id] = {name: title_ids[name] for name in out}
         return out
 
     def read_taxonomy(self) -> Taxonomy:
@@ -135,6 +139,10 @@ class NotionGateway:
     # ---------- SAVE TRANSACTION ----------
 
     def _find_page_id_by_title(self, db_id: str, name: str) -> str | None:
+        cached = self._title_id_cache.get(db_id, {}).get(name)
+        if cached:
+            return cached
+
         q = cast(
             dict[str, Any],
             self.client.databases.query(
@@ -145,7 +153,9 @@ class NotionGateway:
         )
         results = cast(list[dict[str, Any]], q.get("results", []))
         if results:
-            return cast(str, results[0]["id"])
+            page_id = cast(str, results[0]["id"])
+            self._title_id_cache.setdefault(db_id, {})[name] = page_id
+            return page_id
         return None
 
     def _resolve_relation_ids(
