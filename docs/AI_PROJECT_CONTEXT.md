@@ -72,6 +72,8 @@ Opzionali:
 - `TIMEZONE`
 - `ENVIRONMENT`
 - `RULE_PARSER_MODE`
+- `DEFAULT_ACCOUNT`: account per i messaggi che non ne indicano uno; validato contro Notion al
+  bootstrap.
 
 Account e categorie non sono configurabili da `.env`: arrivano solo dalla tassonomia Notion.
 `export_llm_env()` propaga le chiavi LLM in `os.environ` per LiteLLM.

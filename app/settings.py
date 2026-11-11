@@ -30,6 +30,10 @@ class Settings(BaseSettings):
         "conservative",
         alias="RULE_PARSER_MODE",
     )
+    # Account usato quando il messaggio non ne indica uno. Deve esistere tra gli account
+    # letti da Notion (verificato in FinanceService.bootstrap()). Se assente, il bot chiede
+    # di specificare l'account.
+    default_account: str | None = Field(None, alias="DEFAULT_ACCOUNT")
 
     @field_validator("timezone")
     @classmethod

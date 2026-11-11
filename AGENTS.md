@@ -102,6 +102,9 @@ Variabili opzionali:
 - `ENVIRONMENT` default: `local`
 - `RULE_PARSER_MODE` default: `conservative`; usare `balanced` per fidarsi di piu del parser
   regolistico.
+- `DEFAULT_ACCOUNT`: account usato quando il messaggio non ne indica uno (l'LLM restituisce
+  `null`). Deve esistere tra gli account Notion, altrimenti il bootstrap fallisce. Se assente, il
+  bot chiede di specificare l'account.
 
 Non committare `.env` e non includere valori segreti nelle risposte.
 

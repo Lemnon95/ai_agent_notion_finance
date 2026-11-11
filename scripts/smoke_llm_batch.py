@@ -4,15 +4,10 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
+from app.finance_service import FinanceService, notion_tx_from_llm
 from app.llm import extract_transaction
-from app.models import ExtractedTx
-from app.normalizer import (
-    enforce_xor_categories,
-    normalize_account,
-    normalize_outcome,
-)
-from app.notion_gateway import NotionGateway
-from app.taxonomy import set_taxonomy, taxonomy
+from app.models import NotionTx
+from app.taxonomy import taxonomy
 
 SAMPLES: list[str] = [
     # Outcome
@@ -46,12 +41,11 @@ SAMPLES: list[str] = [
 
 
 async def prep_taxonomy() -> None:
-    g = NotionGateway()
-    g.verify_schema()
-    set_taxonomy(g.read_taxonomy())
+    # Stesso bootstrap del bot (schema, tassonomia, DEFAULT_ACCOUNT); non scrive su Notion.
+    FinanceService().bootstrap()
 
 
-def pretty_tx(tx: ExtractedTx) -> str:
+def pretty_tx(tx: NotionTx) -> str:
     cats = tx.outcome_categories or tx.income_categories or []
     cats_s = ", ".join(cats) if cats else "—"
     return (
@@ -66,33 +60,8 @@ def pretty_tx(tx: ExtractedTx) -> str:
 async def run_one(sample: str) -> None:
     try:
         data: dict[str, Any] = await extract_transaction(sample)
-
-        # --- Normalizzazione PRIMA della validazione ---
-        # account tollerante a None
-        data["account"] = normalize_account(
-            (data.get("account") or ""), set(taxonomy.accounts)
-        ) or data.get("account")
-
-        # categorie outcome preliminari (keyword -> categoria)
-        data["outcome_categories"] = normalize_outcome(
-            data.get("outcome_categories"),
-            data.get("description", ""),
-            set(taxonomy.outcome_categories),
-        )
-
-        # Impone XOR tra outcome/income (evita doppie classificazioni)
-        out_fixed, inc_fixed = enforce_xor_categories(
-            description=data.get("description", ""),
-            outcome=data.get("outcome_categories"),
-            income=data.get("income_categories"),
-            allowed_outcome=set(taxonomy.outcome_categories),
-            allowed_income=set(taxonomy.income_categories),
-        )
-        data["outcome_categories"] = out_fixed
-        data["income_categories"] = inc_fixed
-
-        # --- Validazione ---
-        tx = ExtractedTx.model_validate(data)
+        # Stessa normalizzazione/validazione del bot (account predefinito incluso).
+        tx = notion_tx_from_llm(data)
         print(f"OK: {sample}")
         print(pretty_tx(tx))
     except Exception as e:

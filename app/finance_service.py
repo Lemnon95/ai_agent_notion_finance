@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from .idempotency import IdempotencyStore, make_plan_key
 from .llm import extract_transaction
@@ -57,6 +57,12 @@ class FinanceService:
     def bootstrap(self) -> None:
         self.gateway.verify_schema()
         set_taxonomy(self.gateway.read_taxonomy())
+        default_account = settings.default_account
+        if default_account and default_account not in taxonomy.accounts:
+            raise ValueError(
+                f"DEFAULT_ACCOUNT '{default_account}' non esiste tra gli account Notion: "
+                f"{list(taxonomy.accounts)}"
+            )
         log_event(
             log,
             "taxonomy_loaded",
@@ -112,30 +118,41 @@ class FinanceService:
         return result
 
     async def _extract_with_llm(self, text: str) -> NotionTx:
-        raw = await extract_transaction(text)
+        return notion_tx_from_llm(await extract_transaction(text))
 
-        raw["account"] = normalize_account(
-            (raw.get("account") or ""), set(taxonomy.accounts)
-        ) or raw.get("account")
 
-        raw["outcome_categories"] = normalize_outcome(
-            raw.get("outcome_categories"),
-            raw.get("description", ""),
-            set(taxonomy.outcome_categories),
-        )
+def notion_tx_from_llm(llm_data: dict[str, Any]) -> NotionTx:
+    """Normalizza e valida il JSON dell'LLM (usato dal bot e dagli smoke script)."""
+    raw = dict(llm_data)
 
-        out_fixed, inc_fixed = enforce_xor_categories(
-            description=raw.get("description", ""),
-            outcome=raw.get("outcome_categories"),
-            income=raw.get("income_categories"),
-            allowed_outcome=set(taxonomy.outcome_categories),
-            allowed_income=set(taxonomy.income_categories),
-        )
-        raw["outcome_categories"] = out_fixed
-        raw["income_categories"] = inc_fixed
+    raw["account"] = normalize_account(
+        (raw.get("account") or ""), set(taxonomy.accounts)
+    ) or raw.get("account")
+    if not raw["account"]:
+        if not settings.default_account:
+            # Messaggio intercettato dall'handler Telegram ("Account non valido...").
+            raise ValueError("unsupported account: nessun account indicato")
+        raw["account"] = settings.default_account
+        log_event(log, "default_account_used", account=settings.default_account)
 
-        ext = ExtractedTx.model_validate(raw)
-        return NotionTx.from_extracted(ext)
+    raw["outcome_categories"] = normalize_outcome(
+        raw.get("outcome_categories"),
+        raw.get("description", ""),
+        set(taxonomy.outcome_categories),
+    )
+
+    out_fixed, inc_fixed = enforce_xor_categories(
+        description=raw.get("description", ""),
+        outcome=raw.get("outcome_categories"),
+        income=raw.get("income_categories"),
+        allowed_outcome=set(taxonomy.outcome_categories),
+        allowed_income=set(taxonomy.income_categories),
+    )
+    raw["outcome_categories"] = out_fixed
+    raw["income_categories"] = inc_fixed
+
+    ext = ExtractedTx.model_validate(raw)
+    return NotionTx.from_extracted(ext)
 
 
 def _should_use_rule_result(result: RuleParseResult, mode: RuleParserMode) -> bool:

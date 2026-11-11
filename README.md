@@ -104,6 +104,7 @@ LLM_MODEL=gpt-6-luna
 TIMEZONE=Europe/Rome
 ENVIRONMENT=local
 RULE_PARSER_MODE=conservative
+DEFAULT_ACCOUNT=Revolut
 ```
 
 Required variables:
@@ -119,6 +120,7 @@ Optional variables:
 - `TIMEZONE`
 - `ENVIRONMENT`
 - `RULE_PARSER_MODE`: `conservative` by default, or `balanced`
+- `DEFAULT_ACCOUNT`: account used when a message names none; must exist in Notion
 
 Do not commit `.env`.
 

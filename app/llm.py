@@ -24,8 +24,8 @@ def _build_schema() -> dict[str, Any]:
         "type": "json_schema",
         "json_schema": {
             "name": "transaction_schema",
-            # strict: il modello deve rispettare enum/required. Senza, gpt-6-luna restituisce
-            # account null quando il testo non cita un account.
+            # strict: il modello deve rispettare enum/required (altrimenti puo restituire
+            # valori fuori schema).
             "strict": True,
             "schema": {
                 "type": "object",
@@ -34,9 +34,11 @@ def _build_schema() -> dict[str, Any]:
                     "description": {"type": "string"},
                     "amount": {"type": "number"},
                     "currency": {"type": "string", "enum": ["EUR"]},
+                    # null = il testo non indica un account: lo sceglie il servizio
+                    # (DEFAULT_ACCOUNT), il modello non deve indovinare.
                     "account": {
-                        "type": "string",
-                        "enum": list(taxonomy.accounts),
+                        "type": ["string", "null"],
+                        "enum": [*taxonomy.accounts, None],
                     },
                     "date": {"type": "string", "format": "date"},
                     "outcome_categories": {
@@ -100,6 +102,7 @@ def _build_system_prompt() -> str:
             "(interpreta 'oggi', 'ieri')."
         ),
         f"- 'account' deve essere uno fra: {accounts}.",
+        "- Se il testo NON indica un account, usa null: non indovinarlo.",
         "- Se è una SPESA: scegli SOLO tra queste categorie Outcome:",
         f"  {outcome}.",
         "- Se è un'ENTRATA: scegli SOLO tra queste categorie Income:",

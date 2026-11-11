@@ -4,6 +4,7 @@ import os
 from decimal import Decimal
 from typing import Any, cast
 
+import pytest
 from pytest import MonkeyPatch
 
 from app.idempotency import IdempotencyStore
@@ -103,3 +104,72 @@ def test_finance_service_balanced_mode_accepts_non_whitelisted_rule_categories(
     assert result.parser == "rules"
     assert result.saved[0].tx.outcome_categories == ["Barbiere"]
     assert len(gateway.saved) == 1
+
+
+def _llm_payload(account: str | None) -> dict[str, Any]:
+    return {
+        "description": "cena 18€",
+        "amount": 18,
+        "currency": "EUR",
+        "account": account,
+        "date": dt.date.today().isoformat(),
+        "outcome_categories": ["Needs"],
+        "income_categories": None,
+        "notes": None,
+    }
+
+
+def test_llm_without_account_uses_default_account(monkeypatch: MonkeyPatch) -> None:
+    set_taxonomy(_taxonomy())
+    monkeypatch.setattr(settings, "rule_parser_mode", "conservative")
+    monkeypatch.setattr(settings, "default_account", "Hype")
+
+    async def fake_extract(text: str) -> dict[str, Any]:
+        return _llm_payload(None)
+
+    monkeypatch.setattr("app.finance_service.extract_transaction", fake_extract)
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    result = asyncio.run(service.process_text("cena 18€", chat_id=1))
+
+    assert result.parser == "llm"
+    assert gateway.saved[0].account == "Hype"
+
+
+def test_llm_account_wins_over_default_account(monkeypatch: MonkeyPatch) -> None:
+    set_taxonomy(_taxonomy())
+    monkeypatch.setattr(settings, "default_account", "Hype")
+
+    async def fake_extract(text: str) -> dict[str, Any]:
+        return _llm_payload("Contanti")
+
+    monkeypatch.setattr("app.finance_service.extract_transaction", fake_extract)
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    asyncio.run(service.process_text("cena 18€ contanti", chat_id=2))
+
+    assert gateway.saved[0].account == "Contanti"
+
+
+def test_llm_without_account_and_no_default_asks_for_account(monkeypatch: MonkeyPatch) -> None:
+    set_taxonomy(_taxonomy())
+    monkeypatch.setattr(settings, "default_account", None)
+
+    async def fake_extract(text: str) -> dict[str, Any]:
+        return _llm_payload(None)
+
+    monkeypatch.setattr("app.finance_service.extract_transaction", fake_extract)
+    service = FinanceService(gateway=cast(Any, FakeGateway()))
+
+    with pytest.raises(ValueError, match="unsupported account"):
+        asyncio.run(service.process_text("cena 18€", chat_id=3))
+
+
+def test_bootstrap_rejects_default_account_missing_from_notion(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "default_account", "Revolut")
+    service = FinanceService(gateway=cast(Any, FakeGateway()))
+
+    with pytest.raises(ValueError, match="DEFAULT_ACCOUNT 'Revolut'"):
+        service.bootstrap()
