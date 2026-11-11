@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Any, cast
 from zoneinfo import ZoneInfo
 
-import litellm
 from litellm import acompletion
 from litellm.exceptions import UnsupportedParamsError
 
@@ -309,12 +308,14 @@ async def _call_llm(
         "response_format": response_format,
         "max_tokens": 500,
     }
+    kwargs.update(_model_specific_kwargs(settings.llm_model))
     try:
-        return await acompletion(**_model_specific_kwargs(settings.llm_model), **kwargs)
-    except UnsupportedParamsError:
-        # Se qualche param non è supportato, lascia che litellm lo rimuova
-        litellm.drop_params = True
         return await acompletion(**kwargs)
+    except UnsupportedParamsError:
+        # Riprova con gli stessi parametri chiedendo a litellm di scartare solo quelli non
+        # supportati, e solo per questa chiamata: non usare `litellm.drop_params = True`, che
+        # resterebbe attivo per tutto il processo e scarterebbe parametri in silenzio.
+        return await acompletion(**kwargs, drop_params=True)
 
 
 async def extract_transaction(text: str) -> dict[str, Any]:

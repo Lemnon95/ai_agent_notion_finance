@@ -140,3 +140,34 @@ def test_extract_transaction_retries_once_on_invalid_json(monkeypatch: MonkeyPat
     assert data["account"] is None
     assert len(seen) == 2
     assert seen[1][1]["content"].endswith("Rispondi SOLO con JSON valido.")
+
+
+def test_unsupported_params_retry_keeps_model_kwargs_and_drops_only_per_call(
+    monkeypatch: MonkeyPatch,
+) -> None:
+    import litellm
+    from litellm.exceptions import UnsupportedParamsError
+
+    _set_test_taxonomy()
+    monkeypatch.setattr(settings, "llm_model", "gpt-6-luna")
+    monkeypatch.setattr(litellm, "drop_params", False)
+    calls: list[dict[str, Any]] = []
+
+    async def fake_acompletion(**kwargs: Any) -> Any:
+        calls.append(kwargs)
+        if len(calls) == 1:
+            raise UnsupportedParamsError("param non supportato", llm_provider="openai")
+        return _fake_response('{"ok": true}')
+
+    monkeypatch.setattr(llm, "acompletion", fake_acompletion)
+
+    asyncio.run(llm._call_llm([{"role": "user", "content": "x"}], {"type": "json_object"}))
+
+    assert len(calls) == 2
+    assert "drop_params" not in calls[0]
+    assert calls[1]["drop_params"] is True
+    # Il retry conserva i parametri specifici del modello.
+    assert calls[1]["extra_body"] == {"reasoning_effort": "none"}
+    assert calls[1]["model"] == "gpt-6-luna"
+    # Nessun effetto globale: le chiamate successive non scartano parametri in silenzio.
+    assert litellm.drop_params is False
