@@ -53,3 +53,6 @@ sono i valori ammessi a runtime.
   `requirements*.txt` sono lockfile generati da pip-tools, non editarli a mano.
 - `.claude/settings.json` nega la lettura di `.env` e chiede conferma per i target che usano
   Notion/LLM/Telegram reali.
+- Hosting: studio di fattibilita del 2026-11-11 in `docs/hosting-feasibility.md`. Scelta AWS Lambda
+  (webhook), non implementata; il pacchetto supera i 250 MB per colpa di litellm. Leggilo prima di
+  toccare deploy o webhook.

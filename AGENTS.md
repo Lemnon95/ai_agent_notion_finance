@@ -148,6 +148,16 @@ a mano i `.txt`. Per aggiornare un pacchetto: `make lock LOCK_ARGS="--upgrade-pa
 - Evita side effect a import time quando possibile: configurazione e accesso Notion partono dal
   bootstrap esplicito del `FinanceService`.
 
+## Hosting (Studio Di Fattibilita)
+
+Il bot oggi gira in polling sul PC dell'utente. Il 2026-11-11 e stato fatto uno studio di
+fattibilita per farlo girare sempre acceso con budget sotto 0,50 €/mese:
+[`docs/hosting-feasibility.md`](docs/hosting-feasibility.md). Esito: **AWS Lambda in modalita
+webhook**, preferita dall'utente, ma **non ancora implementata**. Ostacolo principale: le
+dipendenze runtime occupano 298 MB contro il limite di 250 MB dello zip Lambda; la strada
+consigliata e sostituire litellm con l'SDK `openai`. Leggi il documento prima di lavorare su
+deploy, webhook o stato persistente.
+
 ## Rischi E Gotcha
 
 - `build_application()` esegue il bootstrap del `FinanceService`; test e script possono iniettare un
