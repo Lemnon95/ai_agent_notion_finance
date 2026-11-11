@@ -36,6 +36,9 @@ class IdempotencyStore[T]:
             expires_at=time.monotonic() + self.ttl_seconds,
         )
 
+    def delete(self, key: str) -> None:
+        self._records.pop(key, None)
+
     def _purge_expired(self) -> None:
         now = time.monotonic()
         expired = [key for key, record in self._records.items() if record.expires_at <= now]

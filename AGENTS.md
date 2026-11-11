@@ -36,6 +36,7 @@ Stack principale:
 - `app/taxonomy.py`: singleton mutabile con account/categorie lette da Notion.
 - `app/normalizer.py`: normalizzazione tollerante di account/categorie e regola XOR.
 - `app/ux.py`: formattazione della risposta Telegram.
+- `app/model_lifecycle.py`: legge `shutdown_date` del modello OpenAI e prepara l'avviso.
 - `docs/notion-schema.md`: schema Notion umano e regole di trasferimento.
 - `scripts/*.py`: diagnostica, smoke test LLM e dump tassonomia.
 
@@ -53,7 +54,16 @@ Stack principale:
 8. Il JSON LLM passa da normalizzazioni difensive in `app/normalizer.py`.
 9. `ExtractedTx` valida account, importo, valuta, data e XOR outcome/income.
 10. Il servizio applica idempotenza TTL e salva una o piu `NotionTx`.
-11. `TxnView` o il messaggio transfer restituiscono conferma Markdown a Telegram.
+11. `TxnView` o il messaggio transfer restituiscono conferma Markdown a Telegram; se l'account
+    viene da `DEFAULT_ACCOUNT` (`NotionTx.account_is_default`) la conferma lo segnala.
+
+Comandi Telegram: `/start` e `/annulla`. `/annulla` archivia (cestino Notion) l'ultima
+registrazione della chat tramite `FinanceService.undo_last()` e rimuove la sua chiave di
+idempotenza; la memoria dell'ultima registrazione e solo in RAM e si perde al riavvio.
+
+All'avvio `build_application()` chiama `FinanceService.check_model_shutdown()`: se OpenAI ha
+annunciato lo spegnimento di `LLM_MODEL` entro 60 giorni, il bot lo scrive una volta per chat.
+Il controllo non blocca mai l'avvio e non gira in `bootstrap()` (test e smoke non lo chiamano).
 
 ## Invarianti Da Preservare
 

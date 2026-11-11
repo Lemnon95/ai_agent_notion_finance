@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import logging
 from dataclasses import dataclass
 from typing import Any, Literal
 
+import httpx
+
 from .idempotency import IdempotencyStore, make_plan_key
 from .llm import extract_transaction
+from .model_lifecycle import fetch_shutdown_date, openai_model_name, shutdown_warning
 from .models import ExtractedTx, NotionTx
 from .normalizer import enforce_xor_categories, normalize_account, normalize_outcome
 from .notion_gateway import NotionGateway
@@ -53,6 +57,11 @@ class FinanceService:
     ) -> None:
         self.gateway = gateway or NotionGateway()
         self.idempotency = idempotency or IdempotencyStore[ProcessResult]()
+        # Ultima registrazione per chat (chiave idempotenza + risultato), per /annulla.
+        # Solo in memoria: si perde al riavvio del bot.
+        self._last_saved: dict[int | None, tuple[str, ProcessResult]] = {}
+        # Avviso se OpenAI ha annunciato lo spegnimento di LLM_MODEL (vedi check_model_shutdown).
+        self.model_warning: str | None = None
 
     def bootstrap(self) -> None:
         self.gateway.verify_schema()
@@ -114,8 +123,46 @@ class FinanceService:
         ]
         result = ProcessResult(saved=saved, parser=parser, plan_kind=plan_kind)
         self.idempotency.set(key, result)
+        self._last_saved[chat_id] = (key, result)
         log_event(log, "transaction_saved", parser=parser, kind=plan_kind, count=len(saved))
         return result
+
+    async def undo_last(self, chat_id: int | None) -> list[SavedTransaction]:
+        """Sposta nel cestino di Notion l'ultima registrazione della chat (una sola volta)."""
+        entry = self._last_saved.pop(chat_id, None)
+        if entry is None:
+            return []
+        key, result = entry
+        try:
+            for saved in result.saved:
+                await asyncio.to_thread(self.gateway.archive_page, saved.url)
+        except Exception:
+            # Riprovabile: archiviare di nuovo una pagina gia archiviata non fa danni.
+            self._last_saved[chat_id] = entry
+            raise
+        # Cosi lo stesso messaggio, se reinviato, viene registrato di nuovo.
+        self.idempotency.delete(key)
+        log_event(log, "transaction_undone", count=len(result.saved))
+        return result.saved
+
+    def check_model_shutdown(self, today: dt.date | None = None) -> None:
+        """Imposta `model_warning` se OpenAI ha annunciato lo spegnimento di LLM_MODEL.
+
+        Non blocca mai l'avvio: errori di rete o di API vengono solo registrati nei log.
+        """
+        model = openai_model_name(settings.llm_model)
+        api_key = settings.openai_api_key
+        if model is None or api_key is None:
+            return
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                shutdown = fetch_shutdown_date(model, api_key.get_secret_value(), client)
+        except Exception as e:
+            log.warning("Controllo spegnimento modello non riuscito: %s", e)
+            return
+        self.model_warning = shutdown_warning(model, shutdown, today or dt.date.today())
+        if self.model_warning:
+            log_event(log, "model_shutdown_announced", model=model, shutdown=str(shutdown))
 
     async def _extract_with_llm(self, text: str) -> NotionTx:
         return notion_tx_from_llm(await extract_transaction(text))
@@ -128,7 +175,8 @@ def notion_tx_from_llm(llm_data: dict[str, Any]) -> NotionTx:
     raw["account"] = normalize_account(
         (raw.get("account") or ""), set(taxonomy.accounts)
     ) or raw.get("account")
-    if not raw["account"]:
+    account_is_default = not raw["account"]
+    if account_is_default:
         if not settings.default_account:
             # Messaggio intercettato dall'handler Telegram ("Account non valido...").
             raise ValueError("unsupported account: nessun account indicato")
@@ -152,7 +200,10 @@ def notion_tx_from_llm(llm_data: dict[str, Any]) -> NotionTx:
     raw["income_categories"] = inc_fixed
 
     ext = ExtractedTx.model_validate(raw)
-    return NotionTx.from_extracted(ext)
+    tx = NotionTx.from_extracted(ext)
+    if account_is_default:
+        tx.account_is_default = True
+    return tx
 
 
 def _should_use_rule_result(result: RuleParseResult, mode: RuleParserMode) -> bool:

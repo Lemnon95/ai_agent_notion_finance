@@ -112,6 +112,7 @@ class TxnView:
     notion_url: str | None = None
     categories: list[str] | None = None  # <<— ora supporta 0..n categorie
     kind: Literal["outcome", "income"] = "outcome"
+    account_is_default: bool = False
 
     def confirmation_message(self) -> str:
         title = "Entrata registrata" if self.kind == "income" else "Spesa registrata"
@@ -127,7 +128,8 @@ class TxnView:
         parts.extend(
             [
                 f"{emoji_for_account(self.account)} "
-                f"{_escape_md(self.account) if self.account else '—'}",
+                f"{_escape_md(self.account) if self.account else '—'}"
+                f"{' _(predefinito)_' if self.account_is_default else ''}",
                 f"{EMOJI['amount']} {fmt_amount_eur(self.amount)}",
                 f"{EMOJI['date']} {fmt_date(self.date)}",
             ]

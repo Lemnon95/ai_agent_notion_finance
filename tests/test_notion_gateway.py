@@ -60,6 +60,11 @@ class FakeDatabases:
 class FakePages:
     def __init__(self) -> None:
         self.created: list[dict[str, Any]] = []
+        self.updates: list[dict[str, Any]] = []
+
+    def update(self, **kwargs: Any) -> dict[str, Any]:
+        self.updates.append(kwargs)
+        return {"id": kwargs["page_id"]}
 
     def create(self, **kwargs: Any) -> dict[str, Any]:
         self.created.append(kwargs)
@@ -190,3 +195,20 @@ def test_save_transaction_fails_when_related_page_is_missing(monkeypatch: Monkey
         gateway.save_transaction(_tx(account="Satispay"))
 
     assert client.pages.created == []
+
+
+def test_archive_page_extracts_id_from_notion_url(monkeypatch: MonkeyPatch) -> None:
+    gateway, client = _gateway(monkeypatch)
+
+    page_id = "0123456789abcdef0123456789abcdef"
+    gateway.archive_page(f"https://www.notion.so/Cena-18-{page_id}")
+    gateway.archive_page(f"https://www.notion.so/{page_id[:8]}-{page_id[8:12]}-{page_id[12:]}")
+
+    assert client.pages.updates == [{"page_id": page_id, "archived": True}] * 2
+
+
+def test_archive_page_rejects_url_without_id(monkeypatch: MonkeyPatch) -> None:
+    gateway, client = _gateway(monkeypatch)
+    with pytest.raises(ValueError, match="senza id"):
+        gateway.archive_page("https://www.notion.so/qualcosa")
+    assert client.pages.updates == []

@@ -165,6 +165,9 @@ class NotionTx(BaseModel):
     outcome_categories: list[str] | None = None
     income_categories: list[str] | None = None
     notes: str | None = None
+    # True se l'account non era nel messaggio ed e stato usato DEFAULT_ACCOUNT.
+    # Solo per la UX: non viene salvato su Notion.
+    account_is_default: bool = False
 
     model_config = {
         "extra": "forbid",

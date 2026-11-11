@@ -204,6 +204,12 @@ decisione finale e in `FinanceService`, non in `parse_with_rules()`.
 Cache in-memory a TTL per evitare duplicati immediati. La chiave deriva da chat e payload
 normalizzato delle transazioni. Non e persistente su riavvio processo.
 
+### `app/model_lifecycle.py`
+
+Interroga `GET /v1/models/{model}` di OpenAI e legge `shutdown_date` (`YYYY-MM-DD`, `null` o
+assente se non annunciato). `shutdown_warning()` restituisce un avviso se mancano 60 giorni o
+meno. Modelli non OpenAI (es. `groq/...`) vengono ignorati.
+
 ### `app/ux.py`
 
 Contiene helper di presentazione:

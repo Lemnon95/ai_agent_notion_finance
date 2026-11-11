@@ -1,6 +1,7 @@
 # app/notion_gateway.py
 from __future__ import annotations
 
+import re
 from typing import Any, cast
 
 from notion_client import Client
@@ -16,6 +17,14 @@ class NotionGateway:
         self.db_id = settings.notion_db_id
         self._props = self._db_properties()  # cache
         self._title_id_cache: dict[str, dict[str, str]] = {}
+
+    @staticmethod
+    def _page_id_from_url(url: str) -> str:
+        """Estrae l'id (32 caratteri esadecimali) dalla fine di un URL di pagina Notion."""
+        match = re.search(r"([0-9a-f]{32})(?:[?#].*)?$", url.replace("-", ""))
+        if not match:
+            raise ValueError(f"URL Notion senza id di pagina: {url}")
+        return match.group(1)
 
     @staticmethod
     def _page_url(page_id: str) -> str:
@@ -204,3 +213,8 @@ class NotionGateway:
         )
         url = page.get("url")
         return url if isinstance(url, str) else self._page_url(str(page["id"]))
+
+    def archive_page(self, url: str) -> None:
+        """Sposta nel cestino di Notion la pagina indicata (recuperabile da Notion)."""
+        page_id = self._page_id_from_url(url)
+        self.client.pages.update(page_id=page_id, archived=True)
