@@ -72,11 +72,8 @@ Opzionali:
 - `TIMEZONE`
 - `ENVIRONMENT`
 - `RULE_PARSER_MODE`
-- `ACCOUNTS`
-- `OUTCOME_CATEGORIES`
-- `INCOME_CATEGORIES`
 
-Le liste in settings esistono, ma il flusso attuale del bot usa la tassonomia caricata da Notion.
+Account e categorie non sono configurabili da `.env`: arrivano solo dalla tassonomia Notion.
 `export_llm_env()` propaga le chiavi LLM in `os.environ` per LiteLLM.
 
 ### `app/taxonomy.py`
@@ -130,9 +127,6 @@ Punti importanti:
   `none`), GPT-5 (`minimal`) e altri modelli (`temperature=0`).
 - `extract_transaction()` chiede JSON, rimuove eventuali fence Markdown, fa `json.loads()` e applica
   `enforce_xor_categories()`.
-
-Il file `prompts/expense_parser.md` non e la fonte attiva del prompt runtime; va trattato come
-template storico o riferimento.
 
 ### `app/normalizer.py`
 
@@ -217,17 +211,6 @@ Contiene helper di presentazione:
 - formato data `DD/MM/YYYY`;
 - escape Markdown minimale;
 - `TxnView.confirmation_message()`.
-
-### `app/normalize.py`
-
-Contiene preprocessing generico:
-
-- normalizzazione del simbolo euro;
-- virgola decimale verso punto;
-- risoluzione di "oggi", "ieri", "l'altro ieri".
-
-Al momento non e collegato al flusso principale `handle_text()`. Prima di usarlo, verificare
-interazioni con il prompt LLM, che gia riceve "Oggi e YYYY-MM-DD".
 
 ### `scripts/`
 

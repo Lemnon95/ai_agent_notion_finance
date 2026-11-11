@@ -46,8 +46,7 @@ sono i valori ammessi a runtime.
 
 ## Note Di Implementazione
 
-- `prompts/expense_parser.md` e un template storico; il prompt attivo e in `app/llm.py`.
-- `app/normalize.py` e un preprocessing non collegato al flusso runtime corrente.
+- Il prompt LLM attivo e generato in `app/llm.py` (`_build_system_prompt()`).
 - `build_application()` esegue il bootstrap del `FinanceService`; per testare handler o UX conviene
   iniettare un servizio finto.
 - `requirements.txt` contiene solo dipendenze runtime; i tool dev (`ruff`, `black`, `mypy`, `pytest`)

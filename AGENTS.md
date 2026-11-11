@@ -35,9 +35,7 @@ Stack principale:
 - `app/notion_gateway.py`: lettura schema/tassonomia Notion e creazione pagine.
 - `app/taxonomy.py`: singleton mutabile con account/categorie lette da Notion.
 - `app/normalizer.py`: normalizzazione tollerante di account/categorie e regola XOR.
-- `app/normalize.py`: preprocessing testuale legacy/non collegato al flusso runtime attuale.
 - `app/ux.py`: formattazione della risposta Telegram.
-- `prompts/expense_parser.md`: prompt template storico; il prompt effettivo e in `app/llm.py`.
 - `docs/notion-schema.md`: schema Notion umano e regole di trasferimento.
 - `scripts/*.py`: diagnostica, smoke test LLM e dump tassonomia.
 
@@ -104,8 +102,6 @@ Variabili opzionali:
 - `ENVIRONMENT` default: `local`
 - `RULE_PARSER_MODE` default: `conservative`; usare `balanced` per fidarsi di piu del parser
   regolistico.
-- `ACCOUNTS`, `OUTCOME_CATEGORIES`, `INCOME_CATEGORIES`: presenti in settings, ma il runtime del bot
-  usa la tassonomia letta da Notion.
 
 Non committare `.env` e non includere valori segreti nelle risposte.
 
@@ -140,7 +136,6 @@ aggiunge `ruff`, `black`, `mypy` e `pytest` con versioni pinnate.
 
 - `build_application()` esegue il bootstrap del `FinanceService`; test e script possono iniettare un
   servizio finto per evitare chiamate Notion reali.
-- Il prompt effettivo non viene letto da `prompts/expense_parser.md`; e generato in `app/llm.py`.
-- `app/normalize.py` contiene preprocessing utile ma non e usato nel flusso `handle_text()`.
+- Il prompt effettivo e generato in `app/llm.py`, non esiste un file template.
 - Gli smoke test chiamano Notion e LLM, quindi richiedono credenziali e possono consumare quota API.
 - Il bot vero (`make bot`/`make bot-env`) puo scrivere nuove pagine Notion.
