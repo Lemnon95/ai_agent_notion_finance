@@ -244,8 +244,10 @@ make check
 `make bot-env` fallisce se `.env` non esiste. `make bot` carica `.env` se presente e verifica
 `TELEGRAM_BOT_TOKEN`.
 
-`requirements.txt` contiene dipendenze runtime. `requirements-dev.txt` lo include e aggiunge
-`ruff`, `black`, `mypy` e `pytest`; `make venv` e `make install` installano quest'ultimo.
+Le dipendenze sono gestite con pip-tools: si modificano solo `requirements.in` (runtime) e
+`requirements-dev.in` (tool dev), poi `make lock` rigenera `requirements.txt` e
+`requirements-dev.txt` con tutte le dipendenze, anche indirette, a versione fissa. Non modificare
+a mano i `.txt`. Per aggiornare un pacchetto: `make lock LOCK_ARGS="--upgrade-package <nome>"`.
 
 ## Dipendenze Esterne E Side Effect
 

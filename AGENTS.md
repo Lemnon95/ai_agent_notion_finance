@@ -112,6 +112,7 @@ Non committare `.env` e non includere valori segreti nelle risposte.
 
 - `make venv`: crea `.venv` e installa `requirements-dev.txt` (runtime + tool dev).
 - `make install`: reinstalla dipendenze runtime e dev.
+- `make lock`: rigenera i lockfile `requirements*.txt` dai file `.in`.
 - `make bot-env`: avvia il bot caricando `.env`.
 - `make bot`: avvia il bot, usando `.env` se presente e verificando `TELEGRAM_BOT_TOKEN`.
 - `make schema-verify`: controlla schema e tassonomia Notion.
@@ -120,8 +121,10 @@ Non committare `.env` e non includere valori segreti nelle risposte.
 - `make smoke-llm-batch`: esegue piu campioni LLM senza scrivere su Notion.
 - `make lint`, `make type`, `make test`, `make check`: qualita codice.
 
-Nota: `requirements.txt` contiene solo dipendenze runtime; `requirements-dev.txt` lo include e
-aggiunge `ruff`, `black`, `mypy` e `pytest` con versioni pinnate.
+Nota: Le dipendenze sono gestite con pip-tools: si modificano solo `requirements.in` (runtime) e
+`requirements-dev.in` (tool dev), poi `make lock` rigenera `requirements.txt` e
+`requirements-dev.txt` con tutte le dipendenze, anche indirette, a versione fissa. Non modificare
+a mano i `.txt`. Per aggiornare un pacchetto: `make lock LOCK_ARGS="--upgrade-package <nome>"`.
 
 ## Linee Guida Per Modifiche
 

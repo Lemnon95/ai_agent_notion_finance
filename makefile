@@ -30,7 +30,7 @@ SHELL := /usr/bin/env bash
 .DEFAULT_GOAL := help
 
 # Segnaliamo a make che questi target non producono file con lo stesso nome
-.PHONY: help venv install run clean format lint type test check \
+.PHONY: help venv install lock run clean format lint type test check \
         schema-verify taxonomy-dump smoke-llm smoke-llm-batch bot-env bot
 
 # -------------------------------------------------------------------
@@ -52,6 +52,14 @@ venv: ## Crea la venv e installa le dipendenze runtime + dev (requirements-dev.t
 
 install: ## Re-installa le dipendenze runtime + dev nella venv già esistente
 	$(ACTIVATE) pip install -r requirements-dev.txt
+
+# lock: rigenera i lockfile da requirements*.in. Le versioni gia presenti nei .txt restano
+# preferite; per aggiornare un pacchetto: `make lock LOCK_ARGS="--upgrade-package litellm"`.
+LOCK_FLAGS = --strip-extras --no-emit-index-url --allow-unsafe $(LOCK_ARGS)
+
+lock: ## Rigenera requirements.txt e requirements-dev.txt (pip-compile) dai file .in
+	$(ACTIVATE) pip-compile -q $(LOCK_FLAGS) --output-file requirements.txt requirements.in
+	$(ACTIVATE) pip-compile -q $(LOCK_FLAGS) --output-file requirements-dev.txt requirements-dev.in
 
 # -------------------------------------------------------------------
 # ESECUZIONE APPLICAZIONE & PULIZIA

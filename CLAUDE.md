@@ -49,7 +49,7 @@ sono i valori ammessi a runtime.
 - Il prompt LLM attivo e generato in `app/llm.py` (`_build_system_prompt()`).
 - `build_application()` esegue il bootstrap del `FinanceService`; per testare handler o UX conviene
   iniettare un servizio finto.
-- `requirements.txt` contiene solo dipendenze runtime; i tool dev (`ruff`, `black`, `mypy`, `pytest`)
-  sono in `requirements-dev.txt`, installato da `make venv`/`make install`.
+- Dipendenze: modifica `requirements.in`/`requirements-dev.in` e lancia `make lock`; i
+  `requirements*.txt` sono lockfile generati da pip-tools, non editarli a mano.
 - `.claude/settings.json` nega la lettura di `.env` e chiede conferma per i target che usano
   Notion/LLM/Telegram reali.

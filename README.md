@@ -80,6 +80,9 @@ make venv
 
 This creates `.venv` and installs `requirements-dev.txt` (runtime deps plus dev tools).
 
+Dependencies are locked with pip-tools: edit `requirements.in` or `requirements-dev.in`, then run
+`make lock` to regenerate the pinned `requirements*.txt` files.
+
 If the virtual environment already exists:
 
 ```bash
