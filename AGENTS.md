@@ -99,7 +99,7 @@ Variabili richieste:
 
 Variabili opzionali:
 
-- `LLM_MODEL` default: `gpt-4o-mini-2024-07-18`
+- `LLM_MODEL` default: `gpt-6-luna` (`gpt-5-mini` viene spento da OpenAI l'11/12/2026)
 - `TIMEZONE` default: `Europe/Rome`
 - `ENVIRONMENT` default: `local`
 - `RULE_PARSER_MODE` default: `conservative`; usare `balanced` per fidarsi di piu del parser

@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 def main() -> None:
     app = build_application()
     print("Bot in polling…")
-    # run_polling è SINCRONO in PTB 21
+    # run_polling è SINCRONO in PTB 22
     app.run_polling(close_loop=False)
 
 

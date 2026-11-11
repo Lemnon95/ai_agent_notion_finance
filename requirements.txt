@@ -1,9 +1,9 @@
 # --- Runtime deps ---
-python-telegram-bot==21.4        # Bot Telegram (async/Application)
+python-telegram-bot==22.8        # Bot Telegram (async/Application)
 notion-client==2.2.1             # SDK Notion v2 (HTTPX sotto il cofano)
-pydantic==2.8.2                  # Modelli/validator
-pydantic-settings==2.3.4         # Config via env/.env
-litellm==1.75.8                  # Wrapper LLM provider-agnostic
+pydantic==2.14.1                 # Modelli/validator
+pydantic-settings==2.16.1        # Config via env/.env
+litellm==1.106.5                 # Wrapper LLM provider-agnostic
 python-dateutil==2.9.0.post0     # Parsing date “ieri/oggi/…” lato codice
 tzdata==2024.1                   # Fusi orari (utile su Windows/Alpine)
 

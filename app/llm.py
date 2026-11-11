@@ -24,6 +24,9 @@ def _build_schema() -> dict[str, Any]:
         "type": "json_schema",
         "json_schema": {
             "name": "transaction_schema",
+            # strict: il modello deve rispettare enum/required. Senza, gpt-6-luna restituisce
+            # account null quando il testo non cita un account.
+            "strict": True,
             "schema": {
                 "type": "object",
                 "additionalProperties": False,
@@ -62,6 +65,11 @@ def _build_schema() -> dict[str, Any]:
                     "currency",
                     "account",
                     "date",
+                    # strict mode richiede tutte le proprieta in required;
+                    # quelle opzionali sono nullable.
+                    "outcome_categories",
+                    "income_categories",
+                    "notes",
                 ],
             },
         },
@@ -273,15 +281,25 @@ def _extract_json_content(content: str) -> dict[str, Any]:
     return cast(dict[str, Any], data)
 
 
-def _is_gpt5() -> bool:
-    return settings.llm_model.lower().startswith("gpt-5")
+def _model_specific_kwargs(model: str) -> dict[str, Any]:
+    """Parametri specifici per famiglia di modello (ignora un prefisso provider tipo `openai/`)."""
+    name = model.lower().rsplit("/", 1)[-1]
+    if name.startswith("gpt-6"):
+        # GPT-6: niente temperature; reasoning "none" ("minimal" non e supportato) per evitare
+        # che il ragionamento (default "medium") consumi max_tokens e lasci il JSON vuoto.
+        return {"extra_body": {"reasoning_effort": "none"}}
+    if name.startswith("gpt-5"):
+        # GPT-5: niente temperature/top_p; usa controlli nuovi
+        return {"extra_body": {"reasoning_effort": "minimal", "verbosity": "low"}}
+    # Altri modelli: forza determinismo per l'estrazione
+    return {"temperature": 0.0}
 
 
 async def _call_llm(
     messages: list[dict[str, str]],
     response_format: dict[str, Any],
 ) -> Any:
-    """Chiama l'LLM gestendo differenze tra GPT-5 e altri modelli."""
+    """Chiama l'LLM gestendo differenze tra GPT-6, GPT-5 e altri modelli."""
     kwargs: dict[str, Any] = {
         "model": settings.llm_model,
         "messages": messages,
@@ -289,14 +307,7 @@ async def _call_llm(
         "max_tokens": 500,
     }
     try:
-        if _is_gpt5():
-            # GPT-5: niente temperature/top_p; usa controlli nuovi
-            return await acompletion(
-                extra_body={"reasoning_effort": "minimal", "verbosity": "low"},
-                **kwargs,
-            )
-        # Modelli non GPT-5: forza determinismo per l'estrazione
-        return await acompletion(temperature=0.0, **kwargs)
+        return await acompletion(**_model_specific_kwargs(settings.llm_model), **kwargs)
     except UnsupportedParamsError:
         # Se qualche param non è supportato, lascia che litellm lo rimuova
         litellm.drop_params = True

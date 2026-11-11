@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     notion_db_id: str = Field(..., alias="NOTION_DB_ID")
 
     # --- LLM
-    llm_model: str = Field("gpt-4o-mini-2024-07-18", alias="LLM_MODEL")
+    llm_model: str = Field("gpt-6-luna", alias="LLM_MODEL")
     openai_api_key: SecretStr | None = Field(None, alias="OPENAI_API_KEY")
     groq_api_key: SecretStr | None = Field(None, alias="GROQ_API_KEY")
 

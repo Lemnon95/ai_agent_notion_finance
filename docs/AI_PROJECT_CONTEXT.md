@@ -122,9 +122,12 @@ Costruisce prompt e JSON schema a runtime, usando `taxonomy`.
 
 Punti importanti:
 
-- `_build_schema()` vincola account/categorie agli enum letti da Notion.
+- `_build_schema()` vincola account/categorie agli enum letti da Notion. Lo schema e `strict`:
+  ogni proprieta deve stare in `required` (quelle opzionali come tipo nullable), altrimenti
+  OpenAI rifiuta lo schema.
 - `_build_system_prompt()` contiene regole di dominio e mapping esempi.
-- `_call_llm()` gestisce differenze tra GPT-5 e modelli non GPT-5.
+- `_call_llm()` usa `_model_specific_kwargs()` per le differenze tra GPT-6 (`reasoning_effort`
+  `none`), GPT-5 (`minimal`) e altri modelli (`temperature=0`).
 - `extract_transaction()` chiede JSON, rimuove eventuali fence Markdown, fa `json.loads()` e applica
   `enforce_xor_categories()`.
 
@@ -339,7 +342,9 @@ Mantenere gli handler sottili:
   `Takeaway` senza migrare la tassonomia.
 - `Poste Italiane`, `Other Outcome`, `Other Income`, `Gifts`, `Prelievo` e altre categorie presenti
   nel codice potrebbero non esistere in ogni workspace Notion; il normalizer deve rimanere tollerante.
-- `LLM_MODEL` puo essere GPT-5 o altro; `_call_llm()` gestisce parametri diversi.
+- `LLM_MODEL` default `gpt-6-luna`; puo essere GPT-6, GPT-5 o altro, `_call_llm()` gestisce
+  parametri diversi. Con modelli di reasoning non lasciare l'effort di default: consuma
+  `max_tokens` e puo restituire JSON vuoto.
 - Il fallback in `extract_transaction()` riprova con reminder "solo JSON", ma non cambia schema.
 - `mypy` e configurato strict: nuove funzioni dovrebbero avere annotazioni complete.
 - `line-length` e 100 per Ruff/Black.
