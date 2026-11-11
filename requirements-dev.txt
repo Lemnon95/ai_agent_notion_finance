@@ -1,0 +1,6 @@
+# --- Dev deps (qualita codice) ---
+-r requirements.txt
+ruff==0.12.9
+black==25.1.0
+mypy==1.17.1
+pytest==8.4.1

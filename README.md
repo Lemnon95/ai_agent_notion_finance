@@ -78,7 +78,7 @@ AI-agent documentation:
 make venv
 ```
 
-This creates `.venv` and installs `requirements.txt`.
+This creates `.venv` and installs `requirements-dev.txt` (runtime deps plus dev tools).
 
 If the virtual environment already exists:
 

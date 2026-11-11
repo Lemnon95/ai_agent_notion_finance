@@ -36,7 +36,7 @@ sono la documentazione operativa condivisa per agenti AI.
 - Smoke batch LLM: `make smoke-llm-batch`
 - Qualita: `make lint`, `make type`, `make test`, `make check`
 
-Gli smoke test usano Notion e LLM reali; il bot puo scrivere nel database Notion.
+Gli smoke test usano Notion e LLM reali ma non scrivono pagine; il bot puo scrivere nel database Notion.
 
 ## Schema Minimo Notion
 
@@ -50,4 +50,7 @@ sono i valori ammessi a runtime.
 - `app/normalize.py` e un preprocessing non collegato al flusso runtime corrente.
 - `build_application()` esegue il bootstrap del `FinanceService`; per testare handler o UX conviene
   iniettare un servizio finto.
-- `requirements.txt` non include necessariamente tool dev come `ruff`, `black`, `mypy`, `pytest`.
+- `requirements.txt` contiene solo dipendenze runtime; i tool dev (`ruff`, `black`, `mypy`, `pytest`)
+  sono in `requirements-dev.txt`, installato da `make venv`/`make install`.
+- `.claude/settings.json` nega la lettura di `.env` e chiede conferma per i target che usano
+  Notion/LLM/Telegram reali.

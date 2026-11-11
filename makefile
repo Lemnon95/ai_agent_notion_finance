@@ -45,13 +45,13 @@ help: ## Mostra questo aiuto
 # AMBIENTE VIRTUALE & DIPENDENZE
 # -------------------------------------------------------------------
 
-venv: ## Crea la venv e installa le dipendenze (pip + requirements.txt)
+venv: ## Crea la venv e installa le dipendenze runtime + dev (requirements-dev.txt)
 	$(PYTHON) -m venv $(VENV)
 	$(ACTIVATE) pip install -U pip
-	$(ACTIVATE) pip install -r requirements.txt
+	$(ACTIVATE) pip install -r requirements-dev.txt
 
-install: ## Re-installa le dipendenze nella venv già esistente
-	$(ACTIVATE) pip install -r requirements.txt
+install: ## Re-installa le dipendenze runtime + dev nella venv già esistente
+	$(ACTIVATE) pip install -r requirements-dev.txt
 
 # -------------------------------------------------------------------
 # ESECUZIONE APPLICAZIONE & PULIZIA
@@ -103,10 +103,10 @@ schema-verify: ## Verifica lo schema del DB Notion (tipi base, relation non vuot
 taxonomy-dump: ## Stampa liste effettive lette da Notion (Accounts/Outcome/Income)
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/taxonomy_dump.py
 
-smoke-llm: ## Scrive una pagina di test su Notion usando LLM (single)
+smoke-llm: ## Estrae e valida una transazione con LLM reale (legge Notion, non scrive pagine)
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm.py
 
-smoke-llm-batch: ## Variante batch dello smoke test LLM su Notion
+smoke-llm-batch: ## Variante batch dello smoke LLM (legge Notion, non scrive pagine)
 	$(ACTIVATE) PYTHONPATH=$(CURDIR) $(PYTHON) scripts/smoke_llm_batch.py
 
 # -------------------------------------------------------------------

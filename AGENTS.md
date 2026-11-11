@@ -111,8 +111,8 @@ Non committare `.env` e non includere valori segreti nelle risposte.
 
 ## Comandi Utili
 
-- `make venv`: crea `.venv` e installa `requirements.txt`.
-- `make install`: reinstalla le dipendenze runtime.
+- `make venv`: crea `.venv` e installa `requirements-dev.txt` (runtime + tool dev).
+- `make install`: reinstalla dipendenze runtime e dev.
 - `make bot-env`: avvia il bot caricando `.env`.
 - `make bot`: avvia il bot, usando `.env` se presente e verificando `TELEGRAM_BOT_TOKEN`.
 - `make schema-verify`: controlla schema e tassonomia Notion.
@@ -121,8 +121,8 @@ Non committare `.env` e non includere valori segreti nelle risposte.
 - `make smoke-llm-batch`: esegue piu campioni LLM senza scrivere su Notion.
 - `make lint`, `make type`, `make test`, `make check`: qualita codice.
 
-Nota: `requirements.txt` contiene soprattutto dipendenze runtime; se mancano `ruff`, `black`,
-`mypy` o `pytest`, installarli nell'ambiente di sviluppo prima di usare i target di qualita.
+Nota: `requirements.txt` contiene solo dipendenze runtime; `requirements-dev.txt` lo include e
+aggiunge `ruff`, `black`, `mypy` e `pytest` con versioni pinnate.
 
 ## Linee Guida Per Modifiche
 

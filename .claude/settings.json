@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make lint)",
+      "Bash(make type)",
+      "Bash(make test)",
+      "Bash(make check)",
+      "Bash(make format)",
+      "Bash(make help)"
+    ],
+    "ask": [
+      "Bash(make bot)",
+      "Bash(make bot-env)",
+      "Bash(make run)",
+      "Bash(make smoke-llm)",
+      "Bash(make smoke-llm-batch)",
+      "Bash(make schema-verify)",
+      "Bash(make taxonomy-dump)",
+      "Bash(make clean)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./.envrc)",
+      "Edit(./.env)",
+      "Edit(./.env.*)",
+      "Bash(cat .env*)",
+      "Bash(less .env*)",
+      "Bash(head .env*)",
+      "Bash(tail .env*)",
+      "Bash(grep * .env*)",
+      "Bash(source .env*)",
+      "Bash(env)",
+      "Bash(printenv*)"
+    ]
+  }
+}

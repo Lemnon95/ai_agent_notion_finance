@@ -256,8 +256,8 @@ make check
 `make bot-env` fallisce se `.env` non esiste. `make bot` carica `.env` se presente e verifica
 `TELEGRAM_BOT_TOKEN`.
 
-`requirements.txt` contiene dipendenze runtime. I target di qualita presuppongono tool come
-`ruff`, `black`, `mypy` e `pytest`, che potrebbero dover essere installati a parte.
+`requirements.txt` contiene dipendenze runtime. `requirements-dev.txt` lo include e aggiunge
+`ruff`, `black`, `mypy` e `pytest`; `make venv` e `make install` installano quest'ultimo.
 
 ## Dipendenze Esterne E Side Effect
 
