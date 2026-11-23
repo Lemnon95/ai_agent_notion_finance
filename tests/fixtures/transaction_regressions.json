@@ -785,6 +785,11 @@
       }
     },
     {
+      "id": "reimbursement_received_should_use_llm",
+      "text": "ieri ho ricevuto 5€ su hype per rimborso spesa esselunga da parte di ritage",
+      "expected": null
+    },
+    {
       "id": "ambiguous_gift_should_use_llm",
       "text": "il 6 luglio ho speso 3.80 con hype per regalo fiori maestri salsa",
       "expected": null

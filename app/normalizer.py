@@ -57,6 +57,11 @@ def _iter_values(values: Iterable[str] | None) -> list[str]:
     return [str(value) for value in values]
 
 
+def canonical_categories(values: Iterable[str] | None, allowed: set[str]) -> list[str]:
+    """Valori ammessi (case-insensitive, dedup) nella forma canonica della tassonomia."""
+    return _canon_many(values, allowed)
+
+
 def _canon_many(values: Iterable[str] | None, allowed: set[str]) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()

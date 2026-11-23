@@ -12,7 +12,12 @@ from .idempotency import IdempotencyStore, make_plan_key
 from .llm import extract_transaction
 from .model_lifecycle import fetch_shutdown_date, openai_model_name, shutdown_warning
 from .models import ExtractedTx, NotionTx
-from .normalizer import enforce_xor_categories, normalize_account, normalize_outcome
+from .normalizer import (
+    canonical_categories,
+    enforce_xor_categories,
+    normalize_account,
+    normalize_outcome,
+)
 from .notion_gateway import NotionGateway
 from .observability import log_event
 from .rule_parser import RuleParseResult, parse_with_rules
@@ -183,10 +188,19 @@ def notion_tx_from_llm(llm_data: dict[str, Any]) -> NotionTx:
         raw["account"] = settings.default_account
         log_event(log, "default_account_used", account=settings.default_account)
 
-    raw["outcome_categories"] = normalize_outcome(
-        raw.get("outcome_categories"),
-        raw.get("description", ""),
-        set(taxonomy.outcome_categories),
+    # Se l'LLM ha già scelto un'entrata valida e nessuna uscita, non dedurre un outcome dal
+    # testo: "rimborso spesa esselunga" contiene "spesa" ma resta un'entrata.
+    llm_chose_income = bool(
+        canonical_categories(raw.get("income_categories"), set(taxonomy.income_categories))
+    ) and not raw.get("outcome_categories")
+    raw["outcome_categories"] = (
+        None
+        if llm_chose_income
+        else normalize_outcome(
+            raw.get("outcome_categories"),
+            raw.get("description", ""),
+            set(taxonomy.outcome_categories),
+        )
     )
 
     out_fixed, inc_fixed = enforce_xor_categories(

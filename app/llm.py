@@ -172,6 +172,16 @@ def _build_system_prompt() -> str:
         "- 'regalo' come ENTRATA (denaro ricevuto) → 'Gifts' (Income).",
         "- 'stipendio' → 'Salary' (Income).",
         (
+            "- RIMBORSI e denaro ricevuto ('ricevuto', 'rimborso', 'mi ha restituito', "
+            "'accredito') sono ENTRATE anche se il testo cita la spesa originale "
+            "(es. 'rimborso spesa Esselunga' NON è una spesa Supermarket) → "
+            "'Other Income' salvo categoria Income più specifica."
+        ),
+        (
+            "- Attenzione alla DIREZIONE: se sono IO a rimborsare/restituire/dare soldi a "
+            "qualcuno ('ho rimborsato Marco', 'ho restituito 20€ a Luca') è una SPESA (Outcome)."
+        ),
+        (
             "- Se non si adatta ad alcuna Income e 'Other Income' è disponibile, "
             "usa 'Other Income'."
         ),
@@ -252,6 +262,32 @@ def _build_system_prompt() -> str:
             '  "date": "<oggi in ISO>",'
             '  "outcome_categories": null,'
             '  "income_categories": ["Gifts"],'
+            '  "notes": null'
+            "}"
+        ),
+        "Input: 'ricevuto 5€ su Hype da Marco per rimborso spesa supermercato'",
+        (
+            "Output: {"
+            '  "description": "ricevuto 5€ su Hype da Marco per rimborso spesa supermercato",'
+            '  "amount": 5.0,'
+            '  "currency": "EUR",'
+            '  "account": "Hype",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": null,'
+            '  "income_categories": ["Other Income"],'
+            '  "notes": null'
+            "}"
+        ),
+        "Input: 'ho restituito 20€ a Luca con Revolut per la cena'",
+        (
+            "Output: {"
+            '  "description": "ho restituito 20€ a Luca con Revolut per la cena",'
+            '  "amount": 20.0,'
+            '  "currency": "EUR",'
+            '  "account": "Revolut",'
+            '  "date": "<oggi in ISO>",'
+            '  "outcome_categories": ["Wants", "Eating Out and Takeway"],'
+            '  "income_categories": null,'
             '  "notes": null'
             "}"
         ),

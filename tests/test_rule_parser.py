@@ -103,3 +103,22 @@ def test_rules_parse_health_keywords_from_italian_month_date(monkeypatch: Monkey
 
 def test_rules_leave_other_outcome_fallback_to_llm() -> None:
     assert parse_with_rules("ho speso 12 con hype per una cosa strana", _taxonomy()) is None
+
+
+def test_rules_leave_reimbursement_to_llm() -> None:
+    text = "ieri ho ricevuto 5€ su hype per rimborso spesa esselunga da parte di ritage"
+    assert parse_with_rules(text, _taxonomy()) is None
+
+
+def test_rules_leave_received_money_to_llm() -> None:
+    assert parse_with_rules("mi hanno rimborsato 12€ su hype per la spesa", _taxonomy()) is None
+
+
+def test_rules_leave_other_income_signals_to_llm() -> None:
+    for text in (
+        "mi ha ridato 5€ su hype per la spesa",
+        "incassati 5€ su hype spesa",
+        "mi hanno accreditato 5 euro su hype per la spesa",
+        "ricevuto 5€ su hype da Marco per la spesa esselunga",
+    ):
+        assert parse_with_rules(text, _taxonomy()) is None, text

@@ -74,7 +74,7 @@ def parse_with_rules(text: str, taxonomy: Taxonomy) -> RuleParseResult | None:
     income_categories = _income_categories_from_text(text, taxonomy)
     if income_categories:
         outcome_categories = None
-    elif _is_ambiguous_gift(text):
+    elif _is_ambiguous_gift(text) or _has_income_signal(text):
         return None
     else:
         outcome_categories = normalize_outcome(
@@ -291,10 +291,20 @@ def _income_categories_from_text(text: str, taxonomy: Taxonomy) -> list[str] | N
     return None
 
 
+# Radici di verbi/sostantivi che indicano denaro in entrata (ricevuto, rimborsata, mi ha ridato,
+# accreditati, incassate...). Un falso positivo costa solo una chiamata LLM, quindi meglio larghe.
+_INCOME_SIGNAL_RE = re.compile(r"(?<!\w)(?:ricev|rimbors|restitu|ridat|accredit|incass)\w*")
+
+
+def _has_income_signal(text: str) -> bool:
+    """Il testo suggerisce un'entrata: la direzione del denaro la decide l'LLM."""
+    return _INCOME_SIGNAL_RE.search(_normalize(text)) is not None
+
+
 def _is_ambiguous_gift(text: str) -> bool:
-    return _contains_word(text, "regalo") and not any(
-        _contains_word(text, word)
-        for word in ("ricevuto", "ricevuta", "ricevere", "donazione", "donare")
+    return _contains_word(text, "regalo") and not (
+        _has_income_signal(text)
+        or any(_contains_word(text, word) for word in ("donazione", "donare"))
     )
 
 

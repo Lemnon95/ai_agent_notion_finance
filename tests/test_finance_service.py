@@ -289,3 +289,73 @@ def test_check_model_shutdown_skips_non_openai_models(monkeypatch: MonkeyPatch) 
 
     assert called == []
     assert service.model_warning is None
+
+
+def _income_taxonomy() -> Taxonomy:
+    return Taxonomy(
+        accounts=["Hype"],
+        outcome_categories=["Needs", "Supermarket", "Other Outcome"],
+        income_categories=["Other Income"],
+    )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "ieri ho ricevuto 5€ su hype per rimborso spesa esselunga da parte di ritage",
+        "mi ha restituito 5€ su hype per la spesa esselunga",
+    ],
+)
+def test_llm_income_is_not_flipped_to_outcome_by_description(
+    monkeypatch: MonkeyPatch, text: str
+) -> None:
+    set_taxonomy(_income_taxonomy())
+    monkeypatch.setattr(settings, "rule_parser_mode", "conservative")
+
+    async def fake_extract(_: str) -> dict[str, Any]:
+        return {
+            "description": text,
+            "amount": 5.0,
+            "currency": "EUR",
+            "account": "Hype",
+            "date": "2026-11-22",
+            "outcome_categories": None,
+            "income_categories": ["Other Income"],
+            "notes": None,
+        }
+
+    monkeypatch.setattr("app.finance_service.extract_transaction", fake_extract)
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    result = asyncio.run(service.process_text(text, chat_id=10))
+
+    assert result.parser == "llm"
+    assert gateway.saved[0].income_categories == ["Other Income"]
+    assert gateway.saved[0].outcome_categories is None
+
+
+def test_llm_outcome_for_reimbursing_someone_stays_outcome(monkeypatch: MonkeyPatch) -> None:
+    set_taxonomy(_income_taxonomy())
+    text = "ho rimborsato 20€ a Marco con hype per la spesa"
+
+    async def fake_extract(_: str) -> dict[str, Any]:
+        return {
+            "description": text,
+            "amount": 20.0,
+            "currency": "EUR",
+            "account": "Hype",
+            "date": "2026-11-22",
+            "outcome_categories": ["Needs", "Supermarket"],
+            "income_categories": None,
+            "notes": None,
+        }
+
+    monkeypatch.setattr("app.finance_service.extract_transaction", fake_extract)
+    gateway = FakeGateway()
+    service = FinanceService(gateway=cast(Any, gateway))
+
+    asyncio.run(service.process_text(text, chat_id=11))
+
+    assert gateway.saved[0].outcome_categories == ["Needs", "Supermarket"]
+    assert gateway.saved[0].income_categories is None
