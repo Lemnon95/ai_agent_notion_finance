@@ -56,3 +56,5 @@ sono i valori ammessi a runtime.
 - Hosting: studio di fattibilita del 2026-11-11 in `docs/hosting-feasibility.md`. Scelta AWS Lambda
   (webhook), non implementata; il pacchetto supera i 250 MB per colpa di litellm. Leggilo prima di
   toccare deploy o webhook.
+- FinanceGuardian (regole di budget, report, consigli AI, Mini App): visione concordata il
+  2026-11-27, non implementata, con domande aperte. Vedi `docs/financeguardian-design.md`.

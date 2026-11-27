@@ -158,6 +158,14 @@ dipendenze runtime occupano 298 MB contro il limite di 250 MB dello zip Lambda; 
 consigliata e sostituire litellm con l'SDK `openai`. Leggi il documento prima di lavorare su
 deploy, webhook o stato persistente.
 
+## FinanceGuardian (Budget E Regole, Pianificato)
+
+Il 2026-11-27 e stata concordata un'estensione del bot: motore deterministico di regole di budget
+che legge le transazioni da Notion, feedback dopo ogni spesa, comandi `/budget` e `/report`, poi
+consigli AI e una Telegram Mini App. **Non ancora implementato**; ci sono domande aperte.
+Decisioni, proposte e piano in [`docs/financeguardian-design.md`](docs/financeguardian-design.md):
+leggilo prima di lavorare su budget, regole, report o analisi.
+
 ## Rischi E Gotcha
 
 - `build_application()` esegue il bootstrap del `FinanceService`; test e script possono iniettare un
